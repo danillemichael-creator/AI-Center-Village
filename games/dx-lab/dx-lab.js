@@ -224,7 +224,7 @@
     c.innerHTML =
       '<h2>Welcome to the DX Lab</h2>' +
       '<p class="lead">Midnight on Ocean Drive. The lab\'s new AI can\'t tell a palm tree from a pink Cadillac. Your job: teach it. Pick a level:</p>' +
-      (AIVice.isComplete(GAME_ID) ? '<p class="tip">★ You already beat the DX Lab. Replay any level to practice.</p>' : '<p class="tip">Clear either level to earn 50 AI tokens. Bonus tokens for a perfect quiz and for beating Data Dash.</p>');
+      (AIVice.isComplete(GAME_ID) ? '<p class="tip">★ You already beat the DX Lab. Replay any level to practice.</p>' : '<p class="tip">Clear a level to earn 50 AI tokens.</p>');
     var levels = el('div', 'levels');
     var defs = [
       { name: 'Sort Lab', tag: 'PUZZLE · 4 ROUNDS', text: 'Build a training set, fix a biased dataset, engineer the perfect prompt, then a quick quiz.', go: round1 },
@@ -524,7 +524,7 @@
       lesson: '<b>Set constraints.</b> Format and style rules ("a haiku", "ALL CAPS") shape the output as much as the topic does.' },
     { slots: ['role', 'topic', 'format', 'style'], answer: { role: 'guide', topic: 'cars', format: 'bullets', style: 'lower' },
       goal: 'Make the AI display exactly the TARGET OUTPUT below.',
-      lesson: '<b>Give the AI a role.</b> "You are a tour guide" changes its voice. Role + task + format + constraints is a solid prompt recipe.' }
+      lesson: '<b>Give the AI a role.</b> "You are a tour guide" changes its voice. Role + task + format + constraints is a solid prompt recipe.</p><p class="tip">Prompts can also <b>break</b> an AI. Test that at the Matrix Motel.' }
   ];
 
   function round3() {
@@ -698,7 +698,6 @@
     if (AIVice.markComplete(GAME_ID)) {
       AIVice.addTokens(GAME_ID, 50);
       earned = 50;
-      if (score === QUIZ.length) { AIVice.addTokens(GAME_ID, 10); earned += 10; }
     }
     refreshTokens();
     app.innerHTML = '';
@@ -708,9 +707,9 @@
       '<h2 class="neon">AI Fundamentals: Mastered</h2>' +
       '<p>Quiz score: <b style="color:var(--sun)">' + score + ' / ' + QUIZ.length + '</b>' + (score === QUIZ.length ? ' (perfect!)' : '') + '</p>' +
       (earned
-        ? '<div class="big-tokens">+' + earned + ' AI TOKENS</div>' + (earned > 50 ? '<p class="tip">Includes a +10 bonus for a perfect quiz.</p>' : '')
+        ? '<div class="big-tokens">+' + earned + ' AI TOKENS</div>'
         : '<p class="tip">You already collected the DX Lab tokens. Nice practice run!</p>') +
-      '<p>You trained a model, measured its accuracy, fixed a biased dataset, and engineered prompts to get exactly the output you wanted. Spend your tokens on a new character at the AI Center.</p>';
+      '<p>You trained a model, measured its accuracy, fixed a biased dataset, and engineered prompts to get exactly the output you wanted. Spend your tokens on a new character at the AI Center, then see how prompts can break an AI at the Matrix Motel.</p>';
     var a = el('div', 'actions');
     var hub = el('button', 'btn', 'Back to AI Center');
     hub.onclick = function () { AIVice.backToHub(); };
