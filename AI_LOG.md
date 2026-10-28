@@ -8,7 +8,9 @@ How we used AI (Devin) on this project — evidence for the "Use of AI" judging 
 
 ## @ophelie4 — Programming Lab (`game/python-lab`)
 
-- _(log entries go here)_
+- Used Claude to design and build Programming Lab from the README spec: a 4-room top-down dungeon (variables, if/else, for loop, functions) where each locked door opens a Python terminal running real Python in the browser via Pyodide.
+- Claude checked each door with several hidden test cases so hard-coding the answer can't pass, and added a 3-second stop for infinite loops and a hint that unlocks after 2 wrong tries.
+- Claude play-tested all 4 rooms automatically in a simulated browser with real Python: correct solutions open every door, starter code fails, and finishing adds 50 tokens (+10 with no hints) to the shared wallet.
 
 ## @mdeanh — Robotics (`game/robotics`)
 
