@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Vice — AI Center Village</title>
+  <link rel="stylesheet" href="shared/theme.css">
+  <style>
+    .hud { display: flex; justify-content: center; gap: 24px; margin: 16px 0 32px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    .bldg { display: block; }
+    .bldg h2 { margin: 8px 0 4px; font-size: 28px; }
+    .bldg .done { color: var(--sun); }
+    .overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(10, 5, 24, 0.92);
+      padding: 40px 16px; overflow: auto;
+    }
+    .overlay.open { display: block; }
+    .shop { max-width: 720px; margin: 0 auto; }
+    .char { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0; text-align: left; }
+    .swatch { width: 36px; height: 36px; border-radius: 50%; flex: none; }
+  </style>
+</head>
+<body>
+  <div class="screen">
+    <p class="pixel" style="color:var(--aqua)">NSPIRE HACKATHON 6 : RETRO REMIX</p>
+    <h1 class="neon" style="font-size:56px;margin:8px 0">AI VICE</h1>
+    <p>Ocean Drive at night. Learn a skill in every building, earn AI tokens, spend them at the AI Center.</p>
+
+    <div class="hud pixel">
+      <span>TOKENS: <span id="tokens" style="color:var(--sun)">0</span></span>
+      <span>COMPLETED: <span id="done" style="color:var(--aqua)">0/4</span></span>
+    </div>
+
+    <div class="grid">
+      <a class="card bldg" style="--accent:var(--python-lab)" href="games/python-lab/">
+        <h2 class="neon">Programming Lab</h2>
+        <div class="pixel">PYTHON CODING</div>
+        <div class="done" data-done="python-lab"></div>
+      </a>
+      <a class="card bldg" style="--accent:var(--robotics)" href="games/robotics/">
+        <h2 class="neon">Robotics</h2>
+        <div class="pixel">ROBOTICS</div>
+        <div class="done" data-done="robotics"></div>
+      </a>
+      <a class="card bldg" style="--accent:var(--dx-lab)" href="games/dx-lab/">
+        <h2 class="neon">DX Lab</h2>
+        <div class="pixel">AI FUNDAMENTALS</div>
+        <div class="done" data-done="dx-lab"></div>
+      </a>
+      <a class="card bldg" style="--accent:var(--matrix-motel)" href="games/matrix-motel/">
+        <h2 class="neon">Matrix Motel</h2>
+        <div class="pixel">RED TEAMING</div>
+        <div class="done" data-done="matrix-motel"></div>
+      </a>
+    </div>
+
+    <button class="btn" style="margin-top:32px" onclick="document.getElementById('shop').classList.add('open')">
+      ENTER AI CENTER
+    </button>
+  </div>
+
+  <div class="overlay" id="shop">
+    <div class="shop card">
+      <h2 class="neon">The AI Center</h2>
+      <p>Redeem AI tokens for new characters.</p>
+      <p class="pixel">TOKENS: <span id="shop-tokens" style="color:var(--sun)">0</span></p>
+      <div id="chars"></div>
+      <button class="btn ghost" onclick="document.getElementById('shop').classList.remove('open')">CLOSE</button>
+    </div>
+  </div>
+
+  <script src="shared/wallet.js"></script>
+  <script>
+    function refresh() {
+      document.getElementById('tokens').textContent = AIVice.getTokens();
+      document.getElementById('shop-tokens').textContent = AIVice.getTokens();
+      var done = AIVice.getCompleted();
+      document.getElementById('done').textContent = done.length + '/4';
+      document.querySelectorAll('[data-done]').forEach(function (el) {
+        el.textContent = AIVice.isComplete(el.dataset.done) ? '★ COMPLETE' : '';
+      });
+      var wrap = document.getElementById('chars');
+      wrap.innerHTML = '';
+      AIVice.getCharacters().forEach(function (c) {
+        var row = document.createElement('div');
+        row.className = 'char card';
+        row.innerHTML =
+          '<span class="swatch" style="background:' + c.colors.accent + ';box-shadow:0 0 10px ' + c.colors.accent + '"></span>' +
+          '<span style="flex:1"><b>' + c.name + '</b><br><span class="pixel">' +
+          (c.owned ? 'OWNED' : c.price + ' TOKENS') + '</span></span>';
+        var btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.textContent = c.active ? 'EQUIPPED' : c.owned ? 'EQUIP' : 'BUY';
+        btn.disabled = c.active;
+        btn.onclick = function () {
+          if (c.owned) AIVice.equip(c.id); else AIVice.buy(c.id);
+          refresh();
+        };
+        row.appendChild(btn);
+        wrap.appendChild(row);
+      });
+    }
+    refresh();
+  </script>
+</body>
+</html>
