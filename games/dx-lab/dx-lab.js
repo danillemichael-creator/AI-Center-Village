@@ -223,17 +223,21 @@
     var c = el('div', 'card intro');
     c.innerHTML =
       '<h2>Welcome to the DX Lab</h2>' +
-      '<p class="lead">Midnight on Ocean Drive. The lab\'s new AI can\'t tell a palm tree from a pink Cadillac. Your job: teach it.</p>' +
-      '<p><span class="term">Round 1 — Train:</span> sort photos into a training set and watch the model\'s accuracy climb.</p>' +
-      '<p><span class="term">Round 2 — Bias:</span> a rookie trained the model on bad data. Find the problem and fix it.</p>' +
-      '<p><span class="term">Round 3 — Quiz:</span> 5 quick questions on the core ideas of AI.</p>' +
-      '<p class="tip">Finish the lab to earn 50 AI tokens, plus a bonus for a perfect quiz.</p>';
-    if (AIVice.isComplete(GAME_ID)) c.innerHTML += '<p class="tip">★ You already beat the DX Lab. Replay any time to practice.</p>';
-    var a = el('div', 'actions');
-    var b = el('button', 'btn', 'START');
-    b.onclick = round1;
-    a.appendChild(b);
-    c.appendChild(a);
+      '<p class="lead">Midnight on Ocean Drive. The lab\'s new AI can\'t tell a palm tree from a pink Cadillac. Your job: teach it. Pick a level:</p>' +
+      (AIVice.isComplete(GAME_ID) ? '<p class="tip">★ You already beat the DX Lab. Replay any level to practice.</p>' : '<p class="tip">Clear either level to earn 50 AI tokens. Bonus tokens for a perfect quiz and for beating Data Dash.</p>');
+    var levels = el('div', 'levels');
+    var defs = [
+      { name: 'Sort Lab', tag: 'PUZZLE · 4 ROUNDS', text: 'Build a training set, fix a biased dataset, engineer the perfect prompt, then a quick quiz.', go: round1 },
+      { name: 'Data Dash', tag: 'PLATFORMER', text: 'Run and jump down Ocean Drive. Grab correctly labeled photos, skip bad data, stomp glitch bugs.', go: function () { if (window.DXLab.startDash) window.DXLab.startDash(); }, soon: true }
+    ];
+    defs.forEach(function (d) {
+      var l = el('button', 'level card');
+      l.innerHTML = '<span class="pixel lv-tag">' + d.tag + '</span><span class="lv-name neon">' + d.name + '</span><span class="lv-text">' + d.text + '</span>';
+      l.onclick = d.go;
+      if (d.soon && !window.DXLab.startDash) { l.disabled = true; l.querySelector('.lv-tag').textContent = d.tag + ' · COMING SOON'; }
+      levels.appendChild(l);
+    });
+    c.appendChild(levels);
     app.appendChild(c);
   }
 
@@ -398,7 +402,7 @@
 
   // ---------- Round 1: train ----------
   function round1() {
-    setStep('ROUND 1/3 · TRAIN');
+    setStep('ROUND 1/4 · TRAIN');
     trainingLab({
       title: 'Round 1: Build a training set',
       text:
@@ -430,7 +434,7 @@
 
   // ---------- Round 2: bias ----------
   function round2() {
-    setStep('ROUND 2/3 · BIAS');
+    setStep('ROUND 2/4 · BIAS');
     trainingLab({
       title: 'Round 2: The biased dataset',
       text:
@@ -463,6 +467,157 @@
         '<p>Fix: collect <b>more</b> data, and make it <b>balanced</b> and <b>representative</b> of the real world the model will see.</p>',
       next: round3
     });
+  }
+
+  // ---------- Round 3: prompt lab ----------
+  var LIB = {
+    palm: {
+      label: 'palm trees',
+      sentence: 'Palm trees bend in strong winds instead of snapping.',
+      haiku: 'Tall palm in the wind\nfronds wave at the neon moon\nroots hold the warm sand',
+      bullets: '- Look for the tall trunk\n- Fronds fan out at the top\n- Coconuts hang under the fronds'
+    },
+    ocean: {
+      label: 'the ocean',
+      sentence: 'The ocean covers about 71% of Earth\'s surface.',
+      haiku: 'Waves fold under stars\nsalt wind hums a synth bassline\nthe tide keeps the beat',
+      bullets: '- Swim near a lifeguard\n- Watch for rip currents\n- Wear reef-safe sunscreen'
+    },
+    cars: {
+      label: 'neon cars',
+      sentence: 'Neon underglow makes a car look like it floats on light.',
+      haiku: 'Pink chrome on the drive\nheadlights paint the palm trees gold\nengines purr at dusk',
+      bullets: '- Cruise slow on Ocean Drive\n- Park under the palm lights\n- Keep the synthwave loud'
+    }
+  };
+  var SLOTS = {
+    role: { label: 'ROLE', opts: { guide: 'Miami tour guide', pirate: 'pirate', robot: 'robot' },
+            prompt: function (v, o) { return 'You are a ' + o + '.'; } },
+    topic: { label: 'TOPIC', opts: { palm: 'palm trees', ocean: 'the ocean', cars: 'neon cars' },
+             prompt: function (v, o) { return 'Write about ' + o + '.'; } },
+    format: { label: 'FORMAT', opts: { sentence: 'one sentence', haiku: 'a haiku', bullets: '3 bullet points' },
+              prompt: function (v, o) { return 'Format: ' + o + '.'; } },
+    style: { label: 'STYLE', opts: { caps: 'ALL CAPS', lower: 'all lowercase' },
+             prompt: function (v, o) { return 'Use ' + o + '.'; } }
+  };
+  var ROLE_LINE = { guide: 'Welcome to Ocean Drive!', pirate: 'Arr, matey!', robot: 'BEEP BOOP. PROCESSING.' };
+
+  function fakeModel(sel) {
+    if (!sel.topic) return 'Sure! I can help with that. What would you like me to write about?';
+    var t = LIB[sel.topic], out;
+    if (!sel.format) {
+      out = 'Here is some information about ' + t.label + '. ' + t.sentence + ' There is a lot more to say about ' + t.label +
+            ', and people have many different opinions. In conclusion, ' + t.label + ' are a big topic. Let me know if you want more!';
+    } else out = t[sel.format];
+    if (sel.role) out = ROLE_LINE[sel.role] + '\n' + out;
+    if (sel.style === 'caps') out = out.toUpperCase();
+    if (sel.style === 'lower') out = out.toLowerCase();
+    return out;
+  }
+
+  var CHALLENGES = [
+    { slots: ['topic', 'format'], answer: { topic: 'ocean', format: 'sentence' },
+      goal: 'Make the AI display a one-sentence fact about the ocean.',
+      lesson: '<b>Be specific.</b> A vague prompt gets a vague (or rambling) answer. Say the topic <i>and</i> the format you want.' },
+    { slots: ['topic', 'format', 'style'], answer: { topic: 'palm', format: 'haiku', style: 'caps' },
+      goal: 'Make the AI display exactly the TARGET OUTPUT below.',
+      lesson: '<b>Set constraints.</b> Format and style rules ("a haiku", "ALL CAPS") shape the output as much as the topic does.' },
+    { slots: ['role', 'topic', 'format', 'style'], answer: { role: 'guide', topic: 'cars', format: 'bullets', style: 'lower' },
+      goal: 'Make the AI display exactly the TARGET OUTPUT below.',
+      lesson: '<b>Give the AI a role.</b> "You are a tour guide" changes its voice. Role + task + format + constraints is a solid prompt recipe.' }
+  ];
+
+  function round3() {
+    setStep('ROUND 3/4 · PROMPT');
+    var ci = 0;
+    function show() {
+      var ch = CHALLENGES[ci], sel = {}, tries = 0, solved = false;
+      var target = fakeModel(ch.answer);
+      app.innerHTML = '';
+      var head = el('div', 'card panel intro');
+      head.innerHTML =
+        '<h2>Round 3: Prompt Lab · ' + (ci + 1) + '/' + CHALLENGES.length + '</h2>' +
+        '<p class="lead">A <span class="term">prompt</span> is the instruction you give an AI. The same AI gives very different outputs depending on how you ask.</p>' +
+        '<p class="tip">' + ch.goal + ' Pick prompt parts, press RUN, and compare. Leave a part empty to see what happens when you\'re vague.</p>';
+      app.appendChild(head);
+
+      var lab = el('div', 'lab');
+      var targetCard = el('div', 'card prompt-box');
+      targetCard.innerHTML = '<h3 class="pixel pl-h">TARGET OUTPUT</h3>';
+      var tgt = el('pre', 'pl-out target-out');
+      tgt.textContent = target;
+      targetCard.appendChild(tgt);
+
+      var outCard = el('div', 'card prompt-box');
+      outCard.innerHTML = '<h3 class="pixel pl-h">AI OUTPUT</h3>';
+      var out = el('pre', 'pl-out');
+      out.textContent = '(press RUN)';
+      outCard.appendChild(out);
+      var status = el('div', 'meter-note');
+      outCard.appendChild(status);
+
+      var builder = el('div', 'card full prompt-builder');
+      builder.innerHTML = '<h3 class="pixel pl-h">BUILD YOUR PROMPT</h3>';
+      ch.slots.forEach(function (k) {
+        var slot = SLOTS[k];
+        var row = el('div', 'pl-row');
+        row.appendChild(el('span', 'pixel pl-label', slot.label));
+        var opts = [['', '(none)']].concat(Object.keys(slot.opts).map(function (v) { return [v, slot.opts[v]]; }));
+        opts.forEach(function (o) {
+          var b = el('button', 'chip' + ((sel[k] || '') === o[0] ? ' on' : ''), o[1]);
+          b.onclick = function () {
+            if (solved) return;
+            sel[k] = o[0] || undefined;
+            Array.prototype.forEach.call(row.querySelectorAll('.chip'), function (x) { x.classList.remove('on'); });
+            b.classList.add('on');
+            updatePrompt();
+          };
+          row.appendChild(b);
+        });
+        builder.appendChild(row);
+      });
+      var promptText = el('pre', 'pl-prompt');
+      builder.appendChild(promptText);
+      var run = el('button', 'btn', 'RUN ▶');
+      builder.appendChild(run);
+
+      lab.appendChild(targetCard);
+      lab.appendChild(outCard);
+      lab.appendChild(builder);
+      app.appendChild(lab);
+      var insightSlot = el('div');
+      app.appendChild(insightSlot);
+      var actions = el('div', 'actions');
+      app.appendChild(actions);
+
+      function updatePrompt() {
+        var parts = ch.slots.filter(function (k) { return sel[k]; }).map(function (k) { return SLOTS[k].prompt(sel[k], SLOTS[k].opts[sel[k]]); });
+        promptText.textContent = '> ' + (parts.length ? parts.join(' ') : 'Write something.');
+      }
+      updatePrompt();
+
+      run.onclick = function () {
+        if (solved) return;
+        tries++;
+        var result = fakeModel(sel);
+        out.textContent = result;
+        out.classList.remove('flash'); void out.offsetWidth; out.classList.add('flash');
+        if (result === target) {
+          solved = true;
+          out.classList.add('match');
+          status.innerHTML = '<span style="color:#39ff88">MATCH! Solved in ' + tries + ' run' + (tries > 1 ? 's' : '') + '.</span>';
+          insightSlot.appendChild(el('div', 'card insight', '<h3>Prompt engineered!</h3><p>' + ch.lesson + '</p>'));
+          var n = el('button', 'btn', ci + 1 < CHALLENGES.length ? 'NEXT CHALLENGE' : 'NEXT ROUND');
+          n.onclick = function () { ci++; if (ci < CHALLENGES.length) show(); else round4(); };
+          actions.appendChild(n);
+        } else {
+          var right = ch.slots.filter(function (k) { return (sel[k] || '') === (ch.answer[k] || ''); }).length;
+          status.innerHTML = '<span style="color:var(--pink)">Not a match.</span> ' + right + ' of ' + ch.slots.length + ' prompt parts are right.' +
+            (tries >= 3 ? ' <span class="tip">Hint: compare the shape of the text (lines, bullets, capitals) and any greeting at the top.</span>' : '');
+        }
+      };
+    }
+    show();
   }
 
   // ---------- Round 3: quiz ----------
@@ -499,8 +654,8 @@
     }
   ];
 
-  function round3() {
-    setStep('ROUND 3/3 · QUIZ');
+  function round4() {
+    setStep('ROUND 4/4 · QUIZ');
     var i = 0, score = 0;
     function show() {
       var item = QUIZ[i];
@@ -555,11 +710,11 @@
       (earned
         ? '<div class="big-tokens">+' + earned + ' AI TOKENS</div>' + (earned > 50 ? '<p class="tip">Includes a +10 bonus for a perfect quiz.</p>' : '')
         : '<p class="tip">You already collected the DX Lab tokens. Nice practice run!</p>') +
-      '<p>You trained a model, measured its accuracy, and fixed a biased dataset. Spend your tokens on a new character at the AI Center.</p>';
+      '<p>You trained a model, measured its accuracy, fixed a biased dataset, and engineered prompts to get exactly the output you wanted. Spend your tokens on a new character at the AI Center.</p>';
     var a = el('div', 'actions');
     var hub = el('button', 'btn', 'Back to AI Center');
     hub.onclick = function () { AIVice.backToHub(); };
-    var again = el('button', 'btn ghost', 'PLAY AGAIN');
+    var again = el('button', 'btn ghost', 'LEVEL SELECT');
     again.onclick = intro;
     a.appendChild(hub);
     a.appendChild(again);
@@ -567,6 +722,10 @@
     app.appendChild(c);
   }
 
+  window.DXLab = {
+    GAME_ID: GAME_ID, app: app, photo: photo, drawPhoto: drawPhoto, evaluate: evaluate,
+    el: el, refreshTokens: refreshTokens, setStep: setStep, intro: intro
+  };
   refreshTokens();
   intro();
 })();

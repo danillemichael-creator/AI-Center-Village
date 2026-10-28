@@ -22,3 +22,4 @@ How we used AI (Devin) on this project — evidence for the "Use of AI" judging 
 ## @miloszmenceldocs-tech — Matrix Motel (`game/matrix-motel`)
 
 - _(log entries go here)_
+- Added Round 3 "Prompt Lab" (quiz moved to Round 4): the player builds a prompt from Role/Topic/Format/Style chips and a scripted in-browser "AI" responds; goal is to reproduce a target output exactly. Teaches specificity, constraints, and roles. Level-select screen added with Data Dash (platformer) shown as coming soon.
