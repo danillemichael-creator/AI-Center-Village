@@ -228,13 +228,12 @@
     var levels = el('div', 'levels');
     var defs = [
       { name: 'Sort Lab', tag: 'PUZZLE · 4 ROUNDS', text: 'Build a training set, fix a biased dataset, engineer the perfect prompt, then a quick quiz.', go: round1 },
-      { name: 'Data Dash', tag: 'PLATFORMER', text: 'Run and jump down Ocean Drive. Grab correctly labeled photos, skip bad data, stomp glitch bugs.', go: function () { if (window.DXLab.startDash) window.DXLab.startDash(); }, soon: true }
+      { name: 'Data Dash', tag: 'PLATFORMER', text: 'Run and jump down Ocean Drive. Grab correctly labeled photos, skip bad data, stomp glitch bugs.', go: function () { window.DXDash.start(window.DXLab); } }
     ];
     defs.forEach(function (d) {
       var l = el('button', 'level card');
       l.innerHTML = '<span class="pixel lv-tag">' + d.tag + '</span><span class="lv-name neon">' + d.name + '</span><span class="lv-text">' + d.text + '</span>';
       l.onclick = d.go;
-      if (d.soon && !window.DXLab.startDash) { l.disabled = true; l.querySelector('.lv-tag').textContent = d.tag + ' · COMING SOON'; }
       levels.appendChild(l);
     });
     c.appendChild(levels);

@@ -23,3 +23,4 @@ How we used AI (Devin) on this project — evidence for the "Use of AI" judging 
 
 - _(log entries go here)_
 - Added Round 3 "Prompt Lab" (quiz moved to Round 4): the player builds a prompt from Role/Topic/Format/Style chips and a scripted in-browser "AI" responds; goal is to reproduce a target output exactly. Teaches specificity, constraints, and roles. Level-select screen added with Data Dash (platformer) shown as coming soon.
+- Added Data Dash, a side-scrolling platformer level (`dash.js`): run and jump down neon Ocean Drive, grab photos whose label matches the picture, skip mislabeled ones, stomp glitch bugs, respawn at checkpoints. At the flag the haul trains the same 1-NN model; 85% test accuracy clears DX Lab. Devin checked that grabbing everything (5 bad labels) fails at 75% and clean data reaches 100%.
