@@ -5,15 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DX Lab — AI Vice</title>
   <link rel="stylesheet" href="../../shared/theme.css">
-  <style>body { --accent: var(--dx-lab); }</style>
+  <link rel="stylesheet" href="dx-lab.css">
 </head>
 <body>
   <div class="screen">
-    <h1 class="neon">DX Lab</h1>
-    <p class="pixel">AI FUNDAMENTALS</p>
-    <p>Game under construction — check back soon.</p>
-    <button class="btn" onclick="AIVice.backToHub()">Back to AI Center</button>
+    <header class="top">
+      <div>
+        <h1 class="neon">DX Lab</h1>
+        <p class="pixel sub">AI FUNDAMENTALS <span id="step"></span></p>
+      </div>
+      <div class="hud pixel">TOKENS: <span id="tokens">0</span></div>
+    </header>
+
+    <main id="app"></main>
+
+    <button class="btn ghost hub-btn" onclick="AIVice.backToHub()">Back to AI Center</button>
   </div>
-  <script src="../../shared/wallet.js"></script>
+  <script src="../../shared/include.js"></script>
+  <script src="sfx.js"></script>
+  <script src="typer.js"></script>
+  <script src="dash.js"></script>
+  <script src="dx-lab.js"></script>
 </body>
 </html>
