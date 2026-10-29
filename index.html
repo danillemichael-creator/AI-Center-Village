@@ -6,103 +6,522 @@
   <title>AI Vice — AI Center Village</title>
   <link rel="stylesheet" href="shared/theme.css">
   <style>
-    .hud { display: flex; justify-content: center; gap: 24px; margin: 16px 0 32px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
-    .bldg { display: block; }
-    .bldg h2 { margin: 8px 0 4px; font-size: 28px; }
-    .bldg .done { color: var(--sun); }
-    .overlay {
-      display: none; position: fixed; inset: 0;
-      background: rgba(10, 5, 24, 0.92);
-      padding: 40px 16px; overflow: auto;
+    html, body { height: 100%; overflow: hidden; }
+    body { background: var(--night); }
+
+    #stage { position: fixed; inset: 0; }
+    #map {
+      position: absolute;
+      transition: transform 1s ease-in-out;
+      will-change: transform;
     }
-    .overlay.open { display: block; }
-    .shop { max-width: 720px; margin: 0 auto; }
-    .char { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0; text-align: left; }
-    .swatch { width: 36px; height: 36px; border-radius: 50%; flex: none; }
+    #map img {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      image-rendering: pixelated;
+      display: block;
+    }
+
+    .hotspot {
+      position: absolute;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      padding: 0;
+    }
+    .hotspot:hover, .hotspot:focus-visible {
+      outline: 2px dashed var(--aqua);
+      outline-offset: 2px;
+    }
+    .hotspot .tag {
+      position: absolute; left: 50%; bottom: -6px;
+      transform: translate(-50%, 100%);
+      font-family: 'Press Start 2P', monospace;
+      font-size: 9px;
+      color: var(--accent, var(--aqua));
+      text-shadow: 0 0 8px var(--accent, var(--aqua));
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity .2s;
+      pointer-events: none;
+    }
+    .hotspot:hover .tag, .hotspot:focus-visible .tag { opacity: 1; }
+    .hotspot.done::after {
+      content: '★';
+      position: absolute; top: -14px; right: -10px;
+      color: var(--sun);
+      text-shadow: 0 0 10px var(--sun);
+      font-size: 20px;
+    }
+
+    #sprite {
+      position: absolute;
+      display: none;
+      image-rendering: pixelated;
+      transition: opacity .35s;
+      z-index: 5;
+    }
+    #doorglow {
+      position: absolute;
+      display: none;
+      border-radius: 4px;
+      box-shadow: 0 0 24px 10px var(--aqua), inset 0 0 18px var(--aqua);
+      z-index: 4;
+    }
+
+    #hud {
+      position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 18px; align-items: center;
+      background: rgba(10, 5, 24, 0.85);
+      border: 2px solid var(--sun);
+      border-radius: 4px;
+      padding: 8px 18px;
+      z-index: 20;
+    }
+    #hud .who { display: flex; align-items: center; gap: 8px; color: var(--aqua); }
+    #hud-sprite { image-rendering: pixelated; }
+    .mute-btn {
+      background: none; border: none; color: var(--aqua);
+      font: inherit; cursor: pointer; padding: 0 4px; font-size: 14px;
+    }
+    .mute-btn.off { color: #5a5080; }
+
+    #player-modal {
+      position: fixed; inset: 0; display: none;
+      background: rgba(10, 5, 24, 0.92);
+      z-index: 40;
+      align-items: center; justify-content: center;
+    }
+    #player-modal.open { display: flex; }
+    #player-modal .card { max-width: 440px; text-align: center; padding: 32px; }
+    #player-modal input {
+      display: block; width: 100%; margin: 12px 0;
+      font-family: 'VT323', monospace; font-size: 26px; text-align: center;
+      background: var(--night); color: var(--aqua);
+      border: 2px solid var(--aqua); border-radius: 4px; padding: 8px;
+    }
+    #player-modal input::placeholder { color: #5a5080; }
+    #player-modal .hint { color: #8a7fb0; font-size: 18px; margin: 0 0 12px; }
+
+    #overlay {
+      position: fixed; inset: 0;
+      display: none;
+      z-index: 30;
+      background: var(--night) url('assets/ai-center-room.png') center/cover no-repeat;
+      image-rendering: pixelated;
+      overflow: auto;
+    }
+    #overlay.open { display: block; }
+    #overlay .panel {
+      max-width: 860px;
+      margin: 80px auto 60px;
+    }
+    #back-to-map { position: fixed; top: 14px; left: 14px; z-index: 31; }
+
+    .dialog {
+      display: flex; gap: 16px; align-items: flex-start; text-align: left;
+      --accent: var(--aqua); margin-bottom: 18px; position: relative;
+    }
+    #dlg-portrait { image-rendering: pixelated; flex: none; }
+    .dlg-name { color: var(--sun); margin-bottom: 6px; }
+    .dlg-text { min-height: 54px; font-size: 26px; }
+    .dlg-arrow {
+      position: absolute; right: 14px; bottom: 8px;
+      color: var(--sun); animation: blink 0.8s steps(2) infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    #pedestals { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+    .pedestal {
+      width: 130px; padding: 12px 6px; text-align: center;
+      border: 1px solid #3a2060; border-radius: 6px;
+      background: rgba(20, 10, 40, 0.7);
+    }
+    .pedestal.active { border-color: var(--aqua); box-shadow: 0 0 10px var(--aqua); }
+    .pedestal canvas { image-rendering: pixelated; display: block; margin: 0 auto 6px; }
+    .pedestal .price {
+      font-family: 'Press Start 2P', monospace; font-size: 9px;
+      color: var(--sun); display: block; margin: 4px 0 8px;
+    }
+    .pedestal .btn { font-size: 9px; padding: 8px 10px; margin: 0; }
+
+    .board { margin-top: 24px; }
+    .board td { padding: 4px 14px; font-size: 22px; }
+    .tabs { display: flex; gap: 8px; justify-content: center; margin: 10px 0 14px; }
+    .tab {
+      font-family: 'Press Start 2P', monospace; font-size: 10px;
+      padding: 8px 14px; background: transparent; color: #8a7fb0;
+      border: 2px solid #3a2060; border-radius: 4px; cursor: pointer;
+    }
+    .tab.on { color: var(--aqua); border-color: var(--aqua); box-shadow: 0 0 8px var(--aqua); }
+    #board { margin: 0 auto; }
+    #board tr.me td { color: var(--sun); text-shadow: 0 0 8px var(--sun); }
+    .board .hint { color: #8a7fb0; font-size: 18px; text-align: center; margin: 8px 0 0; }
+
+    #fade {
+      position: fixed; inset: 0;
+      background: #000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .4s;
+      z-index: 50;
+    }
+    #fade.on { opacity: 1; }
   </style>
 </head>
 <body>
-  <div class="screen">
-    <p class="pixel" style="color:var(--aqua)">NSPIRE HACKATHON 6 : RETRO REMIX</p>
-    <h1 class="neon" style="font-size:56px;margin:8px 0">AI VICE</h1>
-    <p>Ocean Drive at night. Learn a skill in every building, earn AI tokens, spend them at the AI Center.</p>
-
-    <div class="hud pixel">
-      <span>TOKENS: <span id="tokens" style="color:var(--sun)">0</span></span>
-      <span>COMPLETED: <span id="done" style="color:var(--aqua)">0/4</span></span>
-    </div>
-
-    <div class="grid">
-      <a class="card bldg" style="--accent:var(--python-lab)" href="games/python-lab/">
-        <h2 class="neon">Programming Lab</h2>
-        <div class="pixel">PYTHON CODING</div>
-        <div class="done" data-done="python-lab"></div>
-      </a>
-      <a class="card bldg" style="--accent:var(--robotics)" href="games/robotics/">
-        <h2 class="neon">Robotics</h2>
-        <div class="pixel">ROBOTICS</div>
-        <div class="done" data-done="robotics"></div>
-      </a>
-      <a class="card bldg" style="--accent:var(--dx-lab)" href="games/dx-lab/">
-        <h2 class="neon">DX Lab</h2>
-        <div class="pixel">AI FUNDAMENTALS</div>
-        <div class="done" data-done="dx-lab"></div>
-      </a>
-      <a class="card bldg" style="--accent:var(--matrix-motel)" href="games/matrix-motel/">
-        <h2 class="neon">Matrix Motel</h2>
-        <div class="pixel">RED TEAMING</div>
-        <div class="done" data-done="matrix-motel"></div>
-      </a>
-    </div>
-
-    <button class="btn" style="margin-top:32px" onclick="document.getElementById('shop').classList.add('open')">
-      ENTER AI CENTER
-    </button>
+  <div id="hud" class="pixel">
+    <span style="color:var(--pink)">AI VICE</span>
+    <span class="who"><canvas id="hud-sprite" width="24" height="20"></canvas><b id="hud-name"></b></span>
+    <span>TOKENS <b id="hud-tokens" style="color:var(--sun)">0</b></span>
+    <span>DONE <b id="hud-done" style="color:var(--aqua)">0/4</b></span>
+    <button id="mute" class="mute-btn" aria-label="Toggle sound">&#9834;</button>
   </div>
 
-  <div class="overlay" id="shop">
-    <div class="shop card">
-      <h2 class="neon">The AI Center</h2>
-      <p>Redeem AI tokens for new characters.</p>
-      <p class="pixel">TOKENS: <span id="shop-tokens" style="color:var(--sun)">0</span></p>
-      <div id="chars"></div>
-      <button class="btn ghost" onclick="document.getElementById('shop').classList.remove('open')">CLOSE</button>
+  <div id="stage">
+    <div id="map">
+      <img src="assets/map.png" alt="Neon map of Miami: Wynwood, Brickell, downtown, South Beach, Key Biscayne">
+      <canvas id="sprite" width="48" height="40"></canvas>
+      <div id="doorglow"></div>
     </div>
   </div>
 
+  <div id="overlay">
+    <button id="back-to-map" class="btn ghost">&larr; BACK TO MAP</button>
+    <div class="panel">
+      <div class="dialog card" id="dialog">
+        <canvas id="dlg-portrait" width="60" height="50"></canvas>
+        <div>
+          <div class="dlg-name pixel">CAPTAIN BYTE</div>
+          <div class="dlg-text" id="dlg-text"></div>
+        </div>
+        <div class="dlg-arrow">&#9660;</div>
+      </div>
+      <div class="card" style="--accent:var(--pink);text-align:center">
+        <h2 class="neon" style="margin-top:0">THE AI CENTER</h2>
+        <p class="pixel" style="color:var(--sun)">TOKENS: <span id="shop-tokens">0</span></p>
+        <div id="pedestals"></div>
+      </div>
+      <div class="card board" style="--accent:var(--aqua)">
+        <h3 class="neon" style="--accent:var(--aqua);margin:0">LEADERBOARD</h3>
+        <div class="tabs">
+          <button class="tab on" data-tab="crew">MY CREW</button>
+          <button class="tab" data-tab="all">EVERYONE</button>
+        </div>
+        <table id="board"></table>
+        <p class="hint" id="board-hint"></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="player-modal">
+    <div class="card" style="--accent:var(--pink)">
+      <h2 class="neon" style="margin-top:0">WELCOME TO OCEAN DRIVE</h2>
+      <p>What's your name, hotshot?</p>
+      <input id="pname" maxlength="24" placeholder="NICKNAME" autocomplete="off">
+      <input id="pcrew" maxlength="24" placeholder="CREW CODE (OPTIONAL)" autocomplete="off">
+      <p class="hint">Friends who enter the same code share a board.</p>
+      <button class="btn" id="pgo">HIT THE STRIP</button>
+    </div>
+  </div>
+
+  <div id="fade"></div>
+
+  <script src="shared/config.js"></script>
   <script src="shared/wallet.js"></script>
+  <script src="shared/sprite.js"></script>
+  <script src="shared/crew.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="shared/leaderboard.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+  <script src="shared/music.js"></script>
   <script>
-    function refresh() {
-      document.getElementById('tokens').textContent = AIVice.getTokens();
-      document.getElementById('shop-tokens').textContent = AIVice.getTokens();
-      var done = AIVice.getCompleted();
-      document.getElementById('done').textContent = done.length + '/4';
-      document.querySelectorAll('[data-done]').forEach(function (el) {
-        el.textContent = AIVice.isComplete(el.dataset.done) ? '★ COMPLETE' : '';
+    var MAP_W = 960, MAP_H = 540;
+    var REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // % of map image: x,y = top-left of the building, w,h = its size. Tune freely.
+    var HOTSPOTS = {
+      'ai-center':    { label: 'AI Center',       x: 44, y: 33, w: 16, h: 18, accent: 'var(--pink)'   },
+      'python-lab':   { label: 'Programming Lab', x: 24, y: 11, w: 12, h: 14, accent: 'var(--aqua)'   },
+      'robotics':     { label: 'Robotics',        x: 32, y: 53, w: 12, h: 14, accent: 'var(--sunset)' },
+      'matrix-motel': { label: 'Matrix Motel',    x: 76, y: 24, w: 12, h: 16, accent: 'var(--pink)'   },
+      'dx-lab':       { label: 'DX Lab',          x: 71, y: 74, w: 14, h: 12, accent: 'var(--sun)'    }
+    };
+
+    var map = document.getElementById('map');
+    var sprite = document.getElementById('sprite');
+    var sctx = sprite.getContext('2d');
+    var glow = document.getElementById('doorglow');
+    var fadeEl = document.getElementById('fade');
+    var overlay = document.getElementById('overlay');
+    var busy = false;
+
+    function fit() {
+      var s = Math.max(innerWidth / MAP_W, innerHeight / MAP_H);
+      map.style.width = MAP_W * s + 'px';
+      map.style.height = MAP_H * s + 'px';
+      map.style.left = (innerWidth - MAP_W * s) / 2 + 'px';
+      map.style.top = (innerHeight - MAP_H * s) / 2 + 'px';
+    }
+    addEventListener('resize', fit);
+    fit();
+
+    function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+    function refreshHud() {
+      document.getElementById('hud-tokens').textContent = AIVice.getTokens();
+      document.getElementById('hud-done').textContent = AIVice.getCompleted().length + '/4';
+      document.getElementById('hud-name').textContent = AIVice.getPlayer().name || 'ANON';
+      var hcvs = document.getElementById('hud-sprite');
+      if (window.AIViceCrew) {
+        AIViceCrew.drawInto(hcvs, AIVice.getActiveCharacter().id, 'portrait');
+      } else {
+        var hc = hcvs.getContext('2d');
+        hc.clearRect(0, 0, 24, 20);
+        AIViceSprite.draw(hc, AIVice.getActiveCharacter().colors, 0, 0, 0, 2);
+      }
+      document.querySelectorAll('.hotspot').forEach(function (el) {
+        el.classList.toggle('done', AIVice.isComplete(el.dataset.id));
       });
-      var wrap = document.getElementById('chars');
-      wrap.innerHTML = '';
-      AIVice.getCharacters().forEach(function (c) {
-        var row = document.createElement('div');
-        row.className = 'char card';
-        row.innerHTML =
-          '<span class="swatch" style="background:' + c.colors.accent + ';box-shadow:0 0 10px ' + c.colors.accent + '"></span>' +
-          '<span style="flex:1"><b>' + c.name + '</b><br><span class="pixel">' +
-          (c.owned ? 'OWNED' : c.price + ' TOKENS') + '</span></span>';
-        var btn = document.createElement('button');
-        btn.className = 'btn';
-        btn.textContent = c.active ? 'EQUIPPED' : c.owned ? 'EQUIP' : 'BUY';
-        btn.disabled = c.active;
-        btn.onclick = function () {
-          if (c.owned) AIVice.equip(c.id); else AIVice.buy(c.id);
-          refresh();
-        };
-        row.appendChild(btn);
-        wrap.appendChild(row);
+      updateMuteBtn();
+    }
+
+    var muteBtn = document.getElementById('mute');
+    function updateMuteBtn() {
+      var m = AIVice.isMuted();
+      muteBtn.classList.toggle('off', m);
+      muteBtn.innerHTML = m ? '&#9835;&#x0338;' : '&#9834;';
+      muteBtn.setAttribute('aria-pressed', m ? 'true' : 'false');
+    }
+    muteBtn.addEventListener('click', function () {
+      if (AIVice.music && AIVice.music.toggle) AIVice.music.toggle();
+      else AIVice.setMuted(!AIVice.isMuted());
+      updateMuteBtn();
+    });
+
+    var playerModal = document.getElementById('player-modal');
+    if (!AIVice.getPlayer().name) {
+      playerModal.classList.add('open');
+      setTimeout(function () { document.getElementById('pname').focus(); }, 50);
+    }
+    function submitPlayer() {
+      var name = document.getElementById('pname').value.trim();
+      if (!name) { document.getElementById('pname').focus(); return; }
+      AIVice.setPlayer(name, document.getElementById('pcrew').value.trim());
+      playerModal.classList.remove('open');
+      refreshHud();
+    }
+    document.getElementById('pgo').addEventListener('click', submitPlayer);
+    playerModal.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') submitPlayer();
+    });
+
+    Object.keys(HOTSPOTS).forEach(function (id) {
+      var h = HOTSPOTS[id];
+      var el = document.createElement('button');
+      el.className = 'hotspot';
+      el.dataset.id = id;
+      el.style.cssText = 'left:' + h.x + '%;top:' + h.y + '%;width:' + h.w + '%;height:' + h.h + '%;--accent:' + h.accent;
+      el.setAttribute('aria-label', h.label);
+      el.innerHTML = '<span class="tag">' + h.label.toUpperCase() + '</span>';
+      el.addEventListener('click', function () { enter(id, h); });
+      map.appendChild(el);
+    });
+
+    function zoomOn(h) {
+      map.style.transformOrigin = (h.x + h.w / 2) + '% ' + (h.y + h.h / 2) + '%';
+      map.style.transform = 'scale(2.5)';
+    }
+
+    function drawFrame(colors, frame, view) {
+      if (window.AIViceCrew) {
+        AIViceCrew.drawInto(sprite, AIVice.getActiveCharacter().id, view || 'walk', frame);
+        return;
+      }
+      sctx.clearRect(0, 0, sprite.width, sprite.height);
+      AIViceSprite.draw(sctx, colors, frame, 0, 0, 4);
+    }
+
+    function walkToDoor(h) {
+      return new Promise(function (resolve) {
+        var colors = AIVice.getActiveCharacter().colors;
+        var doorX = (h.x + h.w / 2) / 100;
+        var doorY = (h.y + h.h) / 100;
+        var startX = doorX - 0.05, startY = doorY + 0.10;
+        var sw = sprite.width / MAP_W, sh = sprite.height / MAP_H;
+        var t0 = performance.now(), D = 1500;
+        sprite.style.display = 'block';
+        (function step(now) {
+          var p = Math.min(1, (now - t0) / D);
+          var x = startX + (doorX - startX) * p - sw / 2;
+          var y = startY + (doorY - startY) * p - sh;
+          sprite.style.left = x * 100 + '%';
+          sprite.style.top = y * 100 + '%';
+          drawFrame(colors, Math.floor(now / 180) % 2, p < 0.12 ? 'front' : 'walk');
+          if (p < 1) requestAnimationFrame(step); else resolve();
+        })(t0);
       });
     }
-    refresh();
+
+    function enterDoor(h) {
+      glow.style.cssText = 'display:block;left:' + (h.x + h.w * 0.25) + '%;top:' + (h.y + h.h * 0.6) +
+        '%;width:' + h.w * 0.5 + '%;height:' + h.h * 0.4 + '%;';
+      drawFrame(AIVice.getActiveCharacter().colors, 0, 'back');
+      sprite.style.opacity = '0';
+      return wait(400);
+    }
+
+    function resetActors() {
+      sprite.style.display = 'none';
+      sprite.style.opacity = '1';
+      glow.style.display = 'none';
+    }
+
+    async function enter(id, h) {
+      if (busy) return;
+      busy = true;
+      if (REDUCED) {
+        fadeEl.classList.add('on');
+        await wait(400);
+        if (id === 'ai-center') openAiCenter(); else location.href = 'games/' + id + '/index.html';
+        busy = false;
+        return;
+      }
+      zoomOn(h);
+      await wait(1050);
+      if (id === 'ai-center') { openAiCenter(); busy = false; return; }
+      if (AIVice.music) AIVice.music.play('challenge');
+      await walkToDoor(h);
+      await enterDoor(h);
+      fadeEl.classList.add('on');
+      await wait(420);
+      location.href = 'games/' + id + '/index.html';
+    }
+
+    var dlgTimer = null;
+    function captainSays(text) {
+      var el = document.getElementById('dlg-text');
+      clearInterval(dlgTimer);
+      el.textContent = '';
+      var pc = document.getElementById('dlg-portrait').getContext('2d');
+      pc.clearRect(0, 0, 60, 50);
+      AIViceSprite.draw(pc, { body: '#8beaff', accent: '#ff2fb3' }, 0, 0, 0, 5);
+      var i = 0;
+      if (REDUCED) { el.textContent = text; return; }
+      dlgTimer = setInterval(function () {
+        el.textContent = text.slice(0, ++i);
+        if (i >= text.length) clearInterval(dlgTimer);
+      }, 28);
+    }
+
+    var boardTimer = null, boardTab = 'crew';
+
+    function openAiCenter() {
+      renderPedestals();
+      renderBoard();
+      clearInterval(boardTimer);
+      boardTimer = setInterval(renderBoard, 10000);
+      overlay.classList.add('open');
+      var p = AIVice.getPlayer();
+      captainSays('Welcome to the AI Center' + (p.name ? ', ' + p.name : '') +
+        '. Spend those tokens wisely — the leaderboard is watching.');
+    }
+
+    document.getElementById('back-to-map').addEventListener('click', function () {
+      overlay.classList.remove('open');
+      clearInterval(boardTimer);
+      clearInterval(dlgTimer);
+      if (AIVice.music) AIVice.music.play('hub');
+      map.style.transform = 'scale(1)';
+      resetActors();
+      busy = false;
+      refreshHud();
+    });
+
+    document.querySelectorAll('.tab').forEach(function (t) {
+      t.addEventListener('click', function () {
+        boardTab = t.dataset.tab;
+        document.querySelectorAll('.tab').forEach(function (x) {
+          x.classList.toggle('on', x === t);
+        });
+        renderBoard();
+      });
+    });
+
+    function renderPedestals() {
+      document.getElementById('shop-tokens').textContent = AIVice.getTokens();
+      var wrap = document.getElementById('pedestals');
+      wrap.innerHTML = '';
+      AIVice.getCharacters().forEach(function (c) {
+        var ped = document.createElement('div');
+        ped.className = 'pedestal' + (c.active ? ' active' : '');
+        var cv = document.createElement('canvas');
+        cv.width = 64; cv.height = 64;
+        if (window.AIViceCrew) AIViceCrew.drawInto(cv, c.id, 'portrait');
+        else AIViceSprite.draw(cv.getContext('2d'), c.colors, 0, 0, 8, 4);
+        ped.appendChild(cv);
+        var nm = document.createElement('div');
+        nm.innerHTML = '<b>' + c.name + '</b>';
+        ped.appendChild(nm);
+        var pr = document.createElement('span');
+        pr.className = 'price';
+        pr.textContent = c.owned ? 'OWNED' : c.price + ' TOKENS';
+        ped.appendChild(pr);
+        var btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.textContent = c.active ? 'EQUIPPED' : c.owned ? 'EQUIP' : 'REDEEM';
+        btn.disabled = c.active;
+        btn.onclick = function () {
+          if (c.owned) AIVice.setActiveCharacter(c.id);
+          else if (!AIVice.redeemCharacter(c.id)) return;
+          renderPedestals();
+          refreshHud();
+        };
+        ped.appendChild(btn);
+        wrap.appendChild(ped);
+      });
+    }
+
+    function renderBoard() {
+      var me = AIVice.getPlayer();
+      var opts = { limit: 20 };
+      var hint = document.getElementById('board-hint');
+      if (boardTab === 'crew') {
+        if (me.crew) { opts.crewCode = me.crew; hint.textContent = 'CREW: ' + me.crew; }
+        else hint.textContent = 'No crew code set — showing everyone.';
+      } else {
+        hint.textContent = '';
+      }
+      AIVice.getLeaderboard(opts).then(function (rows) {
+        var tbl = document.getElementById('board');
+        if (!rows.length) {
+          tbl.innerHTML = '';
+          hint.textContent = hint.textContent || 'No scores yet — be the first.';
+          return;
+        }
+        var crowns = ['#ffd23f', '#c0c0c0', '#cd7f32'];
+        tbl.innerHTML = rows.map(function (r, i) {
+          var rank = i < 3 ? '<span style="color:' + crowns[i] + '">&#9830;</span>' : String(i + 1);
+          var mine = r.player_name === me.name && me.name;
+          return '<tr' + (mine ? ' class="me"' : '') + '>' +
+            '<td><canvas width="20" height="20" class="lb-av"' + (mine ? ' data-me="1"' : '') + '></canvas></td>' +
+            '<td>' + rank + '</td><td>' + esc(r.player_name) + '</td>' +
+            '<td class="pixel" style="color:var(--sun)">' + r.total_points + '</td>' +
+            '<td style="color:#8a7fb0">' + (r.crew_code || '') + '</td>' +
+            '<td style="color:#8a7fb0">' + r.games_played + ' games</td></tr>';
+        }).join('');
+        var av = tbl.querySelector('[data-me]');
+        if (av && window.AIViceCrew) AIViceCrew.drawInto(av, AIVice.getActiveCharacter().id, 'portrait');
+      });
+    }
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    refreshHud();
   </script>
 </body>
 </html>
