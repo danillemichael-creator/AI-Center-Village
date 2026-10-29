@@ -1,12 +1,14 @@
 // Data Dash: a side-scrolling platformer. The photos you collect become the training set.
 (function () {
-  var W = 960, H = 480, GROUND = 400, WORLD = 5200, FLAG = 5080;
+  var W = 960, H = 480, GROUND = 400, WORLD = 6600, FLAG = 6480;
   var GRAV = 1800, JUMP = 720, SPEED = 270;
 
-  var GROUNDS = [[0, 900], [1000, 1700], [1820, 2600], [2720, 3500], [3600, 4300], [4420, 5200]];
+  var GROUNDS = [[0, 900], [1000, 1700], [1820, 2600], [2720, 3500], [3600, 4300], [4420, 5200], [5200, 5440], [5560, 6600]];
   var PLATFORMS = [[600, 300, 140], [1250, 290, 160], [1450, 220, 120], [2050, 300, 160], [2300, 230, 140],
-                   [2900, 300, 120], [3100, 240, 140], [3300, 180, 120], [3800, 290, 160], [4050, 230, 140], [4600, 300, 140]];
-  var CHECKPOINTS = [60, 1040, 2760, 4460];
+                   [2900, 300, 120], [3100, 240, 140], [3300, 180, 120], [3800, 290, 160], [4050, 230, 140], [4600, 300, 140],
+                   [5700, 330, 100], [5810, 280, 100], [5920, 230, 100], [6030, 180, 100]];
+  var CHECKPOINTS = [60, 1040, 2760, 4460, 5240];
+  var QBLOCKS = [[760, 260], [1620, 260], [2480, 260], [3440, 260], [6250, 280], [6310, 280]];
   // tag = the label printed on the photo. A photo is "good data" when its tag matches what it really shows.
   var PICKUPS = [
     [380, 352, 'palm1', 'day', false, 'palm'], [520, 352, 'car', 'day', false, 'palm'],
@@ -17,9 +19,15 @@
     [3150, 192, 'palm1', 'night', true, 'palm'], [3340, 132, 'surfboard', 'day', false, 'palm'],
     [3700, 352, 'car', 'night', true, 'not'], [3850, 242, 'palm2', 'day', true, 'palm'],
     [4100, 182, 'flamingo', 'night', false, 'palm'], [4520, 352, 'surfboard', 'night', true, 'not'],
-    [4650, 252, 'palm3', 'day', true, 'palm'], [4850, 352, 'building', 'day', true, 'not']
+    [4650, 252, 'palm3', 'day', true, 'palm'], [4850, 352, 'building', 'day', true, 'not'],
+    [5680, 352, 'palm1', 'day', true, 'palm'], [5845, 232, 'cactus', 'night', false, 'not'],
+    [6040, 132, 'palm3', 'day', false, 'palm'], [6190, 352, 'cactus', 'day', true, 'not']
   ];
-  var BUGS = [[1350, 1100, 1650], [2250, 1880, 2550], [3000, 2760, 3460], [3950, 3640, 4260], [4750, 4460, 5000]];
+  var BUGS = [[1350, 1100, 1650], [2250, 1880, 2550], [3000, 2760, 3460], [3950, 3640, 4260], [4750, 4460, 5000], [5580, 5560, 5660]];
+  var QBLOCK_TIPS = [
+    'More data beats less data', 'Check the labels!', 'Variety helps the model generalize',
+    'Bad labels teach bad lessons', 'Test on photos it hasn\'t seen', 'Garbage in, garbage out'
+  ];
 
   function start(api) {
     var app = api.app, el = api.el;
@@ -29,7 +37,8 @@
       api.photo('palm1', 'day', true), api.photo('palm2', 'night', true), api.photo('palm3', 'day', false), api.photo('palm1', 'night', false),
       api.photo('car', 'day', true), api.photo('building', 'night', true), api.photo('flamingo', 'day', false), api.photo('cactus', 'night', true)
     ];
-    var ch = (AIVice.getActiveCharacter && AIVice.getActiveCharacter()) || { colors: { body: '#eaf6ff', accent: '#2ee6ff' } };
+    var activeCharacter = (AIVice.getActiveCharacter && AIVice.getActiveCharacter()) || { id: 'rookie', colors: { body: '#eaf6ff', accent: '#2ee6ff' } };
+    var crewId = activeCharacter.id, ch = activeCharacter;
 
     var wrap = el('div', 'card dash-wrap');
     var hud = el('div', 'dash-hud pixel');
@@ -57,7 +66,11 @@
     wrap.appendChild(hud); wrap.appendChild(canvas); wrap.appendChild(touch); wrap.appendChild(help);
     app.appendChild(wrap); app.appendChild(actions);
     var ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = true;
+
+    var bgImage = new Image(), bgLoaded = false;
+    bgImage.onload = function () { bgLoaded = true; };
+    bgImage.src = 'dash-bg.webp';
 
     var pickups = PICKUPS.map(function (d) {
       var p = api.photo(d[2], d[3], d[4]);
@@ -65,6 +78,7 @@
       return { x: d[0], y: d[1], photo: p, tag: d[5], img: c, taken: false };
     });
     var bugs = BUGS.map(function (b) { return { x: b[0], min: b[1], max: b[2], dir: -1, alive: true, squash: 0 }; });
+    var qblocks = QBLOCKS.map(function (b, i) { return { x: b[0], y: b[1], index: i, used: false, bump: 0 }; });
     var pl = { x: 80, y: GROUND - 32, w: 24, h: 32, vx: 0, vy: 0, onGround: true, face: 1, squash: 0, invuln: 0 };
     var cp = 0, haul = [], stomped = 0, hits = 0, camX = 0, toasts = [], particles = [], shake = 0, flash = 0, running = true, last = 0, t = 0;
     var keys = { left: false, right: false, jump: false }, jumpHeld = false;
@@ -111,13 +125,14 @@
 
     function update(dt) {
       t += dt;
+      qblocks.forEach(function (b) { b.bump = Math.max(0, b.bump - dt); });
       pl.vx = (keys.right ? SPEED : 0) - (keys.left ? SPEED : 0);
       if (pl.vx) pl.face = pl.vx > 0 ? 1 : -1;
       if (keys.jump && !jumpHeld && pl.onGround) { pl.vy = -JUMP; pl.onGround = false; if (window.DXSfx) window.DXSfx.play('jump'); }
       jumpHeld = keys.jump;
       if (!keys.jump && pl.vy < -260) pl.vy = -260; // short hop when released early
       pl.vy += GRAV * dt;
-      var prevBottom = pl.y + pl.h, wasGround = pl.onGround;
+      var prevTop = pl.y, prevBottom = pl.y + pl.h, wasGround = pl.onGround;
       pl.x = Math.max(0, Math.min(WORLD - pl.w, pl.x + pl.vx * dt));
       pl.y += pl.vy * dt;
       pl.onGround = false;
@@ -126,6 +141,23 @@
         if (prevBottom <= GROUND + 1 && bottom >= GROUND && groundAt(pl.x + 4, pl.x + pl.w - 4)) { pl.y = GROUND - pl.h; pl.vy = 0; pl.onGround = true; }
         PLATFORMS.forEach(function (p) {
           if (prevBottom <= p[1] + 1 && bottom >= p[1] && pl.x + pl.w > p[0] && pl.x < p[0] + p[2]) { pl.y = p[1] - pl.h; pl.vy = 0; pl.onGround = true; }
+        });
+        qblocks.forEach(function (b) {
+          if (prevBottom <= b.y + 1 && bottom >= b.y && pl.x + pl.w > b.x && pl.x < b.x + 40) {
+            pl.y = b.y - pl.h; pl.vy = 0; pl.onGround = true;
+          }
+        });
+      } else {
+        qblocks.forEach(function (b) {
+          if (prevTop >= b.y + 39 && pl.y <= b.y + 40 && pl.x + pl.w > b.x && pl.x < b.x + 40) {
+            pl.y = b.y + 40; pl.vy = 100;
+            if (!b.used) {
+              b.used = true; b.bump = 0.15; shake = 0.12;
+              burst(b.x + 20, b.y + 20, 12, ['#ffd23f', '#eaf6ff', '#ff8ad8'], 150);
+              toast(QBLOCK_TIPS[b.index], b.x, b.y - 16, '#ffd23f');
+              if (window.DXSfx) window.DXSfx.play('coin');
+            }
+          }
         });
       }
       if (pl.onGround && !wasGround) { pl.squash = 0.15; burst(pl.x + 12, pl.y + pl.h, 5, ['#eaf6ff', '#ff8ad8'], 90); }
@@ -305,6 +337,30 @@
       if (!pl.onGround) { sx = 0.92; sy = 1.08; }
       var blink = pl.invuln > 0 && Math.floor(t * 20) % 2;
       if (blink) return;
+      var crew = window.AIViceCrew;
+      if (crew && crew.has(crewId)) {
+        var walk0 = crew.frameOf(crewId, 'walk', 0), walk1 = crew.frameOf(crewId, 'walk', 1);
+        var oneWalkFrame = walk0 && walk0 === walk1;
+        var cycle = Math.floor(t / 0.12);
+        var frame = !pl.onGround ? walk0 : pl.vx
+          ? (oneWalkFrame ? (cycle % 2 ? crew.frameOf(crewId, 'front') : walk0) : crew.frameOf(crewId, 'walk', cycle))
+          : crew.frameOf(crewId, 'front');
+        if (frame) {
+          var targetH = pl.h * 1.6, scale = targetH / frame.height;
+          var dw = frame.width * scale, dh = frame.height * scale;
+          var bob = oneWalkFrame && pl.onGround && pl.vx && cycle % 2 ? -2 : 0;
+          ctx.save();
+          ctx.translate(pl.x + pl.w / 2, pl.y + pl.h + bob);
+          ctx.scale((pl.face < 0 ? -1 : 1) * sx, sy);
+          if (pl.onGround) {
+            ctx.fillStyle = 'rgba(10,5,24,0.35)';
+            ctx.beginPath(); ctx.ellipse(0, 1, 12, 3, 0, 0, Math.PI * 2); ctx.fill();
+          }
+          ctx.drawImage(frame, -dw / 2, -dh, dw, dh);
+          ctx.restore();
+          return;
+        }
+      }
       ctx.save();
       ctx.translate(pl.x + pl.w / 2, pl.y + pl.h);
       ctx.scale(sx, sy);
@@ -313,6 +369,30 @@
       var bob = pose === 'run2' ? -2 : 0;
       spr(HEAD, PAL, -12, -32 + bob, 2, pl.face < 0);
       spr(LEGS[pose], PAL, -12, -6, 2, pl.face < 0);
+      ctx.restore();
+    }
+
+    function drawQBlock(b) {
+      ctx.save();
+      var lift = b.bump > 0 ? Math.round(Math.sin((1 - b.bump / 0.15) * Math.PI) * 8) : 0;
+      var y = b.y - lift, used = b.used;
+      ctx.fillStyle = OUT; ctx.fillRect(b.x - 2, y - 2, 44, 44);
+      ctx.fillStyle = used ? '#8a4a34' : '#ffd23f'; ctx.fillRect(b.x, y, 40, 40);
+      ctx.fillStyle = used ? '#b3683e' : '#fff3b0';
+      ctx.fillRect(b.x + 3, y + 3, 34, 4); ctx.fillRect(b.x + 3, y + 3, 4, 34);
+      ctx.fillStyle = used ? '#5a2f2a' : '#c99a12';
+      ctx.fillRect(b.x + 3, y + 34, 34, 3); ctx.fillRect(b.x + 34, y + 3, 3, 34);
+      ctx.fillStyle = used ? '#6b382d' : '#e0aa17';
+      [[6, 6], [31, 6], [6, 31], [31, 31]].forEach(function (p) { ctx.fillRect(b.x + p[0], y + p[1], 3, 3); });
+      if (!used) {
+        ctx.save(); ctx.beginPath(); ctx.rect(b.x + 5, y + 5, 30, 30); ctx.clip();
+        ctx.globalAlpha = 0.32; ctx.fillStyle = '#ffffff';
+        ctx.fillRect(b.x + ((t * 38 + b.index * 11) % 48) - 8, y + 5, 7, 30);
+        ctx.restore();
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = 'bold 30px VT323, monospace';
+        ctx.lineWidth = 4; ctx.strokeStyle = OUT; ctx.strokeText('?', b.x + 20, y + 20);
+        ctx.fillStyle = '#ffffff'; ctx.fillText('?', b.x + 20, y + 20);
+      }
       ctx.restore();
     }
 
@@ -432,7 +512,19 @@
       outlinedText('TRAIN MODEL', FLAG + 29, top - 22, '#ffd23f', '24px VT323, monospace');
     }
 
-    function draw() {
+    function drawBackground() {
+      if (bgLoaded) {
+        var tileW = bgImage.width, scroll = camX * 0.25;
+        var firstTile = Math.floor(scroll / tileW), offset = scroll - firstTile * tileW;
+        for (var i = -1; i <= 1; i++) {
+          var x = i * tileW - offset, tile = firstTile + i;
+          if ((tile % 2 + 2) % 2) {
+            ctx.save(); ctx.translate(x + tileW, 0); ctx.scale(-1, 1);
+            ctx.drawImage(bgImage, 0, -20); ctx.restore();
+          } else ctx.drawImage(bgImage, x, -20);
+        }
+        return;
+      }
       var g = ctx.createLinearGradient(0, 0, 0, H);
       g.addColorStop(0, '#0a0518'); g.addColorStop(0.5, '#2b1140'); g.addColorStop(0.78, '#ff2fb3'); g.addColorStop(1, '#ff7a3d');
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
@@ -456,12 +548,17 @@
       ctx.drawImage(hills, -off, GROUND - 168); ctx.drawImage(hills, 960 - off, GROUND - 168);
       var po = (camX * 0.6) % 320;
       for (var px = -po - 40; px < W + 40; px += 320) ctx.drawImage(palmSprite, Math.round(px), GROUND - 168);
+    }
+
+    function draw() {
+      drawBackground();
 
       var shx = shake > 0 ? Math.round((Math.random() - 0.5) * 8 * shake / 0.25) : 0;
       var shy = shake > 0 ? Math.round((Math.random() - 0.5) * 8 * shake / 0.25) : 0;
       ctx.save(); ctx.translate(-Math.round(camX) + shx, shy);
       drawGround();
       drawPlatforms();
+      qblocks.forEach(drawQBlock);
       drawSign();
       drawCheckpoints();
       drawGoal();
@@ -485,8 +582,8 @@
         for (var gl = 0; gl < 6; gl++) { ctx.fillStyle = gl % 2 ? 'rgba(46,230,255,0.5)' : 'rgba(255,47,179,0.6)'; ctx.fillRect(0, Math.random() * H, W, 3 + Math.random() * 6); }
       }
       // scanlines for CRT feel
-      ctx.fillStyle = 'rgba(10,5,24,0.12)';
-      for (var y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1);
+      ctx.fillStyle = 'rgba(10,5,24,0.05)';
+      for (var y = 0; y < H; y += 4) ctx.fillRect(0, y, W, 1);
     }
 
     function frame(ts) {
@@ -552,7 +649,7 @@
       app.appendChild(a);
     }
     // test hook
-    window.DXDash.state = function () { return { pl: pl, haul: haul.length, cp: cp, running: running, pickups: pickups, bugs: bugs, hits: hits }; };
+    window.DXDash.state = function () { return { pl: pl, haul: haul.length, cp: cp, running: running, pickups: pickups, bugs: bugs, qblocks: qblocks, hits: hits }; };
     window.DXDash.keys = keys;
   }
 

@@ -219,12 +219,20 @@
   // ---------- Intro ----------
   var STATIONS = [
     { n: 1, name: 'Sort Lab', tag: 'PUZZLE', box: [3, 44, 38, 34], label: [6, 37], walk: [33, 80],
-      text: 'Sort photos to train a model, fix a biased dataset, engineer prompts, then a quick quiz.', go: function () { round1(); } },
-    { n: 2, name: 'Data Dash', tag: 'PLATFORMER', box: [40.5, 14, 14.5, 40], label: [41, 7], walk: [47, 60],
+      text: 'Sort photos into training data and teach the model what a palm tree is. 3 levels.', go: function () { playLevels(SORT_GAME, 0); } },
+    { n: 4, name: 'Data Dash', tag: 'PLATFORMER', box: [40.5, 14, 14.5, 40], label: [41, 7], walk: [47, 60],
       text: 'Run Ocean Drive. Grab correctly labeled photos, skip bad data, stomp glitch bugs.', go: function () { window.DXDash.start(window.DXLab); } },
-    { n: 3, name: 'Neural Typer', tag: 'TYPING', box: [57, 36, 34, 33], label: [66, 29], walk: [63, 80],
-      text: 'AI words fall like meteors. Type them to blast them and learn what each one means.', go: function () { window.DXTyper.start(window.DXLab); } }
+    { n: 5, name: 'Neural Typer', tag: 'TYPING', box: [57, 38, 22, 31], label: [57, 70], walk: [63, 80],
+      text: 'AI words fall like meteors. Type them to blast them and learn what each one means.', go: function () { window.DXTyper.start(window.DXLab); } },
+    { n: 2, name: 'Bias Buster', tag: 'DETECTIVE', box: [58, 14.5, 23, 21], label: [60, 29], walk: [68, 74],
+      text: 'A model learned the wrong lesson. Find the bias in its data and fix it. 3 levels.', go: function () { playLevels(BIAS_GAME, 0); } },
+    { n: 3, name: 'Prompt Lab', tag: 'PROMPTS', box: [87, 22, 13, 46], label: [68, 16], walk: [84, 88],
+      text: 'Build prompts that make the AI display exactly the target output. 4 levels.', go: function () { promptLab(0); } }
   ];
+
+  var DONE_KEY = 'dxlab-done';
+  function doneGames() { try { return JSON.parse(localStorage.getItem(DONE_KEY)) || {}; } catch (e) { return {}; } }
+  function markGame(name) { var d = doneGames(); d[name] = true; try { localStorage.setItem(DONE_KEY, JSON.stringify(d)); } catch (e) {} }
 
   function intro() {
     setStep('');
@@ -264,7 +272,7 @@
       b.style.left = d.box[0] + '%'; b.style.top = d.box[1] + '%';
       b.style.width = d.box[2] + '%'; b.style.height = d.box[3] + '%';
       var t = el('span', 'chip-tag station-tag');
-      t.innerHTML = '<span class="st-n">' + d.n + '</span><span class="lv-name">' + d.name + '</span><span class="lv-tag">' + d.tag + '</span>';
+      t.innerHTML = '<span class="st-n">' + d.n + '</span><span class="lv-name">' + d.name + (doneGames()[d.name] ? ' ★' : '') + '</span><span class="lv-tag">' + d.tag + '</span>';
       t.style.left = d.label[0] + '%'; t.style.top = d.label[1] + '%';
       b.onmouseenter = b.onfocus = function () { say(d.name + ' · ' + d.tag, d.text); };
       b.onmouseleave = b.onblur = idle;
@@ -447,11 +455,26 @@
     render();
   }
 
-  // ---------- Round 1: train ----------
-  function round1() {
-    setStep('ROUND 1/4 · TRAIN');
-    trainingLab({
-      title: 'Round 1: Build a training set',
+  // ---------- Level runner (Sort Lab + Bias Buster) ----------
+  function playLevels(game, i) {
+    var cfg = game.levels[i], last = i + 1 === game.levels.length;
+    setStep(game.name.toUpperCase() + ' · LEVEL ' + (i + 1) + '/' + game.levels.length);
+    var c = {};
+    for (var k in cfg) c[k] = cfg[k];
+    c.nextLabel = last ? 'FINISH ' + game.name.toUpperCase() : 'NEXT LEVEL';
+    c.next = last ? function () { finish(game.name, game.summary); } : function () { playLevels(game, i + 1); };
+    trainingLab(c);
+  }
+
+  function P(kind, time, mirror) { return photo(kind, time, !!mirror); }
+  function L(kind, time, mirror, label) { return { photo: P(kind, time, mirror), label: label }; }
+
+  var SORT_GAME = {
+    name: 'Sort Lab',
+    summary: 'You built training sets, saw why variety matters, and cleaned up mislabeled data.',
+    levels: [
+      {
+      title: 'Sort Lab · Level 1: Build a training set',
       text:
         '<p class="lead">A <span class="term">model</span> learns from <span class="term">training data</span>: examples that a human has labeled.</p>' +
         '<p>Sort the photo pile into <b style="color:#39ff88">PALM TREE</b> or <b style="color:var(--pink)">NOT PALM TREE</b>. ' +
@@ -475,15 +498,45 @@
         '<h3>Model trained!</h3>' +
         '<p><span class="term">Accuracy</span> = correct predictions ÷ total test photos. We test on photos the model has <i>never seen</i>, so we know it learned the pattern and didn\'t just memorize answers.</p>' +
         '<p>Notice the cactus: green like a palm, but no trunk. Without a cactus in the training data, the model would guess "palm tree". Variety in your examples matters.</p>',
-      next: round2
-    });
-  }
+    },
+      {
+        title: 'Sort Lab · Level 2: Night shift',
+        text:
+          '<p class="lead">The model now has to work around the clock: half the test photos are shot at <b>night</b>.</p>' +
+          '<p>If it only ever sees daytime palms, a night-time palm looks like nothing it knows. Give it examples from both.</p>' +
+          '<p class="tip">Sort the pile. Reach 85% test accuracy with at least 8 training photos.</p>',
+        pool: [P('palm1', 'night'), P('car', 'day'), P('cactus', 'night'), P('palm2', 'day'), P('flamingo', 'night', 1),
+               P('palm3', 'night', 1), P('building', 'night'), P('surfboard', 'day'), P('palm2', 'night', 1),
+               P('ball', 'night'), P('palm1', 'day', 1), P('cactus', 'day', 1)],
+        train: [],
+        tests: [P('palm2', 'night'), P('car', 'night', 1), P('palm3', 'day'), P('cactus', 'night', 1),
+                P('building', 'day', 1), P('palm1', 'night', 1), P('flamingo', 'day'), P('surfboard', 'night')],
+        goal: 0.85, minTrain: 8, showBalance: true, flagWrong: false,
+        insight: '<h3>Night shift covered!</h3><p>A model only knows the world its training data shows it. Cover every situation it will meet (day <i>and</i> night) and it stops being surprised.</p>'
+      },
+      {
+        title: 'Sort Lab · Level 3: Label check',
+        text:
+          '<p class="lead">An intern labeled this training set in a hurry. A few photos are in the <b>wrong bin</b>.</p>' +
+          '<p>Wrong labels teach the model wrong answers. Find them and move them to the right bin, or back to the pile.</p>' +
+          '<p class="tip">Reach 100% test accuracy with at least 6 training photos.</p>',
+        pool: [P('palm3', 'day'), P('ball', 'day')],
+        train: [L('palm1', 'day', 0, true), L('car', 'day', 0, true), L('palm2', 'day', 1, true), L('building', 'day', 0, false),
+                L('palm3', 'day', 1, false), L('flamingo', 'day', 0, false), L('cactus', 'day', 0, true), L('surfboard', 'day', 0, false)],
+        tests: [P('palm1', 'day', 1), P('car', 'day', 1), P('palm2', 'day'), P('cactus', 'day', 1),
+                P('palm3', 'day'), P('building', 'day', 1), P('flamingo', 'day', 1), P('surfboard', 'day', 1)],
+        goal: 1, minTrain: 6, flagWrong: true,
+        insight: '<h3>Labels cleaned!</h3><p>Garbage in, garbage out: a model trusts every label you give it. Real AI teams spend a lot of time checking and fixing labels.</p>'
+      }
+    ]
+  };
 
-  // ---------- Round 2: bias ----------
-  function round2() {
-    setStep('ROUND 2/4 · BIAS');
-    trainingLab({
-      title: 'Round 2: The biased dataset',
+  var BIAS_GAME = {
+    name: 'Bias Buster',
+    summary: 'You found three kinds of bias in training data and fixed each one.',
+    levels: [
+      {
+      title: 'Bias Buster · Level 1: Day and night',
       text:
         '<p class="lead">A rookie trained the model on just 4 photos. Every palm tree was shot in the <b>day</b>, every other photo at <b>night</b>.</p>' +
         '<p>Look at the test results: the model calls night-time palms "not palm" and daytime cars "palm". It learned a shortcut, <i>"blue sky = palm tree"</i>, because of <span class="term">bias</span> in its training data.</p>' +
@@ -512,9 +565,38 @@
         '<p>With too little data, and data that was <span class="term">biased</span> (palms only by day), the model latched onto the wrong clue: the sky color. ' +
         'Real AI systems fail the same way, e.g. face recognition trained mostly on one group of people.</p>' +
         '<p>Fix: collect <b>more</b> data, and make it <b>balanced</b> and <b>representative</b> of the real world the model will see.</p>',
-      next: round3
-    });
-  }
+    },
+      {
+        title: 'Bias Buster · Level 2: Lopsided data',
+        text:
+          '<p class="lead">This model saw <b>six palm trees</b> and only <b>one</b> photo that wasn\'t a palm.</p>' +
+          '<p>With so few "not palm" examples, it calls almost everything a palm tree. That\'s <span class="term">class imbalance</span>.</p>' +
+          '<p class="tip">Add NOT PALM examples from the pile until the classes are balanced. Reach 100% test accuracy.</p>',
+        pool: [P('car', 'day'), P('building', 'night'), P('flamingo', 'day', 1), P('surfboard', 'night'), P('cactus', 'day'),
+               P('ball', 'night', 1), P('car', 'night', 1)],
+        train: [L('palm1', 'day', 0, true), L('palm2', 'day', 0, true), L('palm3', 'day', 0, true),
+                L('palm1', 'night', 1, true), L('palm2', 'night', 1, true), L('palm3', 'night', 1, true), L('ball', 'day', 0, false)],
+        tests: [P('car', 'day', 1), P('palm1', 'day', 1), P('building', 'night', 1), P('palm3', 'night'),
+                P('flamingo', 'day'), P('cactus', 'day', 1), P('surfboard', 'night', 1), P('palm2', 'day', 1)],
+        goal: 1, minTrain: 8, showBalance: true, flagWrong: true,
+        insight: '<h3>Balanced!</h3><p>When one answer dominates the training data, a model can score "okay" by always guessing it. Balanced classes force it to learn the real difference.</p>'
+      },
+      {
+        title: 'Bias Buster · Level 3: The lookalike trap',
+        text:
+          '<p class="lead">This model has never seen a <b>cactus</b> or a <b>flamingo</b>. Green? Must be a palm. Pink and tall? Also a palm.</p>' +
+          '<p>The data didn\'t include the tricky lookalikes, so the model learned "green = palm".</p>' +
+          '<p class="tip">Add the lookalikes as NOT PALM, plus more palms, so the model learns what really makes a palm. Reach 85% test accuracy with at least 8 training photos.</p>',
+        pool: [P('cactus', 'day'), P('cactus', 'night', 1), P('flamingo', 'day'), P('flamingo', 'night', 1),
+               P('palm3', 'night'), P('palm2', 'day', 1), P('car', 'day', 1)],
+        train: [L('palm1', 'day', 0, true), L('palm2', 'night', 0, true), L('building', 'day', 0, false), L('ball', 'night', 0, false)],
+        tests: [P('cactus', 'day', 1), P('palm1', 'night', 1), P('flamingo', 'day', 1), P('palm3', 'day', 1),
+                P('cactus', 'night'), P('building', 'night', 1), P('flamingo', 'night'), P('palm2', 'day')],
+        goal: 0.85, minTrain: 8, showBalance: true, flagWrong: true,
+        insight: '<h3>Trap avoided!</h3><p>Good datasets include <b>hard examples</b>: things that look similar but aren\'t the same. That\'s how a model learns the real features instead of a shortcut.</p>'
+      }
+    ]
+  };
 
   // ---------- Round 3: prompt lab ----------
   var LIB = {
@@ -572,18 +654,22 @@
     { slots: ['role', 'topic', 'format', 'style'], answer: { role: 'guide', topic: 'cars', format: 'bullets', style: 'lower' },
       goal: 'Make the AI display exactly the TARGET OUTPUT below.',
       lesson: '<b>Give the AI a role.</b> "You are a tour guide" changes its voice. Role + task + format + constraints is a solid prompt recipe.</p><p class="tip">Prompts can also <b>break</b> an AI. Test that at the Matrix Motel.' }
+,
+    { slots: ['role', 'topic', 'format', 'style'], answer: { role: 'pirate', topic: 'ocean', format: 'haiku', style: 'caps' },
+      goal: 'Final level: make the AI display exactly the TARGET OUTPUT below. Every prompt part matters.',
+      lesson: '<b>Put it all together.</b> Role, topic, format and style each change the output. Spell out every one and the AI has nothing left to guess.' }
   ];
 
-  function round3() {
-    setStep('ROUND 3/4 · PROMPT');
-    var ci = 0;
+  function promptLab(start) {
+    var ci = start || 0;
     function show() {
+      setStep('PROMPT LAB · LEVEL ' + (ci + 1) + '/' + CHALLENGES.length);
       var ch = CHALLENGES[ci], sel = {}, tries = 0, solved = false;
       var target = fakeModel(ch.answer);
       app.innerHTML = '';
       var head = el('div', 'card panel intro');
       head.innerHTML =
-        '<h2>Round 3: Prompt Lab · ' + (ci + 1) + '/' + CHALLENGES.length + '</h2>' +
+        '<h2>Prompt Lab · Level ' + (ci + 1) + '/' + CHALLENGES.length + '</h2>' +
         '<p class="lead">A <span class="term">prompt</span> is the instruction you give an AI. The same AI gives very different outputs depending on how you ask.</p>' +
         '<p class="tip">' + ch.goal + ' Pick prompt parts, press RUN, and compare. Leave a part empty to see what happens when you\'re vague.</p>';
       app.appendChild(head);
@@ -654,8 +740,8 @@
           out.classList.add('match');
           status.innerHTML = '<span style="color:#39ff88">MATCH! Solved in ' + tries + ' run' + (tries > 1 ? 's' : '') + '.</span>';
           insightSlot.appendChild(el('div', 'card insight', '<h3>Prompt engineered!</h3><p>' + ch.lesson + '</p>'));
-          var n = el('button', 'btn', ci + 1 < CHALLENGES.length ? 'NEXT CHALLENGE' : 'NEXT ROUND');
-          n.onclick = function () { ci++; if (ci < CHALLENGES.length) show(); else round4(); };
+          var n = el('button', 'btn', ci + 1 < CHALLENGES.length ? 'NEXT LEVEL' : 'FINISH PROMPT LAB');
+          n.onclick = function () { ci++; if (ci < CHALLENGES.length) show(); else finish('Prompt Lab', 'You used topic, format, constraints and roles to get exactly the output you wanted.'); };
           actions.appendChild(n);
         } else {
           var right = ch.slots.filter(function (k) { return (sel[k] || '') === (ch.answer[k] || ''); }).length;
@@ -667,103 +753,33 @@
     show();
   }
 
-  // ---------- Round 3: quiz ----------
-  var QUIZ = [
-    {
-      q: 'In AI, what is a <span class="term">model</span>?',
-      opts: ['A 3D figure of a robot', 'A program that learned patterns from data so it can make predictions', 'A list of every possible answer typed in by hand'],
-      a: 1,
-      why: 'A <b>model</b> is what you get after training: a program that captures patterns in data and uses them on new inputs.'
-    },
-    {
-      q: 'The DX Lab model looks at a brand-new photo and says "PALM TREE". That output is called a…',
-      opts: ['Prediction', 'Training set', 'Label error'],
-      a: 0,
-      why: 'A <b>prediction</b> is the model\'s answer for new data. The labeled examples it learned from are the <b>training data</b>.'
-    },
-    {
-      q: 'The model gets 6 out of 8 test photos right. What is its <span class="term">accuracy</span>?',
-      opts: ['68%', '75%', '80%', '6%'],
-      a: 1,
-      why: '<b>Accuracy</b> = correct ÷ total = 6 ÷ 8 = 75%. Always measure it on test data the model never trained on.'
-    },
-    {
-      q: 'Every palm photo in training was taken by day, so the model fails on palms at night. This is an example of…',
-      opts: ['Bias from unbalanced training data', 'The model being too fast', 'Too much accuracy'],
-      a: 0,
-      why: '<b>Bias</b>: when training data doesn\'t represent the real world, the model learns unfair or wrong shortcuts.'
-    },
-    {
-      q: 'A model scores 100% on its own training photos but does badly on new photos. This is called…',
-      opts: ['Prediction', 'Overfitting', 'Labeling'],
-      a: 1,
-      why: '<b>Overfitting</b>: the model memorized its training examples instead of learning the general pattern, so it fails on new data.'
-    }
-  ];
-
-  function round4() {
-    setStep('ROUND 4/4 · QUIZ');
-    var i = 0, score = 0;
-    function show() {
-      var item = QUIZ[i];
-      app.innerHTML = '';
-      var c = el('div', 'card quiz');
-      c.appendChild(el('p', 'pixel', 'QUESTION ' + (i + 1) + ' / ' + QUIZ.length + ' &nbsp; · &nbsp; SCORE ' + score));
-      c.appendChild(el('div', 'q', item.q));
-      var opts = el('div', 'opts');
-      var explain = el('div', 'explain');
-      var actions = el('div', 'actions');
-      item.opts.forEach(function (o, k) {
-        var b = el('button', 'opt', o);
-        b.onclick = function () {
-          var right = k === item.a;
-          if (right) score++;
-          Array.prototype.forEach.call(opts.children, function (x, j) {
-            x.disabled = true;
-            if (j === item.a) x.classList.add('right');
-          });
-          if (!right) b.classList.add('wrong');
-          explain.innerHTML = (right ? '<span style="color:#39ff88">Correct!</span> ' : '<span style="color:var(--pink)">Not quite.</span> ') + item.why;
-          var n = el('button', 'btn', i + 1 < QUIZ.length ? 'NEXT QUESTION' : 'FINISH LAB');
-          n.onclick = function () { i++; if (i < QUIZ.length) show(); else finish(score); };
-          actions.appendChild(n);
-        };
-        opts.appendChild(b);
-      });
-      c.appendChild(opts);
-      c.appendChild(explain);
-      c.appendChild(actions);
-      app.appendChild(c);
-    }
-    show();
-  }
-
-  // ---------- Win ----------
-  function finish(score) {
-    setStep('COMPLETE');
+  function finish(name, summary) {
+    setStep(name.toUpperCase() + ' · CLEARED');
+    markGame(name);
     var earned = 0;
     if (AIVice.markComplete(GAME_ID)) {
       AIVice.addTokens(GAME_ID, 50);
       earned = 50;
     }
     refreshTokens();
+    if (window.DXSfx) window.DXSfx.play('win');
     app.innerHTML = '';
     var c = el('div', 'card win');
     c.innerHTML =
-      '<p class="pixel" style="color:var(--aqua)">DX LAB CLEARED</p>' +
-      '<h2 class="neon">AI Fundamentals: Mastered</h2>' +
-      '<p>Quiz score: <b style="color:var(--sun)">' + score + ' / ' + QUIZ.length + '</b>' + (score === QUIZ.length ? ' (perfect!)' : '') + '</p>' +
+      '<p class="pixel" style="color:var(--aqua)">' + name.toUpperCase() + ' CLEARED</p>' +
+      '<h2 class="neon">All levels done!</h2>' +
+      '<p>' + summary + '</p>' +
       (earned
         ? '<div class="big-tokens">+' + earned + ' AI TOKENS</div>'
-        : '<p class="tip">You already collected the DX Lab tokens. Nice practice run!</p>') +
-      '<p>You trained a model, measured its accuracy, fixed a biased dataset, and engineered prompts to get exactly the output you wanted. Spend your tokens on a new character at the AI Center, then see how prompts can break an AI at the Matrix Motel.</p>';
+        : '<p class="tip">You already collected the DX Lab tokens. Try another station for practice!</p>') +
+      (name === 'Prompt Lab' ? '<p>Prompts can also be used to <i>break</i> an AI. See how at the Matrix Motel.</p>' : '');
     var a = el('div', 'actions');
-    var hub = el('button', 'btn', 'Back to AI Center');
+    var room = el('button', 'btn', 'BACK TO THE LAB');
+    room.onclick = intro;
+    var hub = el('button', 'btn ghost', 'Back to AI Center');
     hub.onclick = function () { AIVice.backToHub(); };
-    var again = el('button', 'btn ghost', 'LEVEL SELECT');
-    again.onclick = intro;
+    a.appendChild(room);
     a.appendChild(hub);
-    a.appendChild(again);
     c.appendChild(a);
     app.appendChild(c);
   }
