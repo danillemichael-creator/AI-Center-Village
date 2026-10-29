@@ -116,11 +116,47 @@
       max-width: 860px;
       margin: 80px auto 60px;
     }
-    .char { display: flex; align-items: center; gap: 12px; margin: 10px 0; text-align: left; }
-    .swatch { width: 34px; height: 34px; border-radius: 50%; flex: none; }
+    #back-to-map { position: fixed; top: 14px; left: 14px; z-index: 31; }
+
+    .dialog {
+      display: flex; gap: 16px; align-items: flex-start; text-align: left;
+      --accent: var(--aqua); margin-bottom: 18px; position: relative;
+    }
+    #dlg-portrait { image-rendering: pixelated; flex: none; }
+    .dlg-name { color: var(--sun); margin-bottom: 6px; }
+    .dlg-text { min-height: 54px; font-size: 26px; }
+    .dlg-arrow {
+      position: absolute; right: 14px; bottom: 8px;
+      color: var(--sun); animation: blink 0.8s steps(2) infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    #pedestals { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+    .pedestal {
+      width: 130px; padding: 12px 6px; text-align: center;
+      border: 1px solid #3a2060; border-radius: 6px;
+      background: rgba(20, 10, 40, 0.7);
+    }
+    .pedestal.active { border-color: var(--aqua); box-shadow: 0 0 10px var(--aqua); }
+    .pedestal canvas { image-rendering: pixelated; display: block; margin: 0 auto 6px; }
+    .pedestal .price {
+      font-family: 'Press Start 2P', monospace; font-size: 9px;
+      color: var(--sun); display: block; margin: 4px 0 8px;
+    }
+    .pedestal .btn { font-size: 9px; padding: 8px 10px; margin: 0; }
+
     .board { margin-top: 24px; }
     .board td { padding: 4px 14px; font-size: 22px; }
-    #back-to-map { position: fixed; top: 14px; left: 14px; z-index: 31; }
+    .tabs { display: flex; gap: 8px; justify-content: center; margin: 10px 0 14px; }
+    .tab {
+      font-family: 'Press Start 2P', monospace; font-size: 10px;
+      padding: 8px 14px; background: transparent; color: #8a7fb0;
+      border: 2px solid #3a2060; border-radius: 4px; cursor: pointer;
+    }
+    .tab.on { color: var(--aqua); border-color: var(--aqua); box-shadow: 0 0 8px var(--aqua); }
+    #board { margin: 0 auto; }
+    #board tr.me td { color: var(--sun); text-shadow: 0 0 8px var(--sun); }
+    .board .hint { color: #8a7fb0; font-size: 18px; text-align: center; margin: 8px 0 0; }
 
     #fade {
       position: fixed; inset: 0;
@@ -153,14 +189,27 @@
   <div id="overlay">
     <button id="back-to-map" class="btn ghost">&larr; BACK TO MAP</button>
     <div class="panel">
+      <div class="dialog card" id="dialog">
+        <canvas id="dlg-portrait" width="60" height="50"></canvas>
+        <div>
+          <div class="dlg-name pixel">CAPTAIN BYTE</div>
+          <div class="dlg-text" id="dlg-text"></div>
+        </div>
+        <div class="dlg-arrow">&#9660;</div>
+      </div>
       <div class="card" style="--accent:var(--pink);text-align:center">
         <h2 class="neon" style="margin-top:0">THE AI CENTER</h2>
         <p class="pixel" style="color:var(--sun)">TOKENS: <span id="shop-tokens">0</span></p>
-        <div id="chars"></div>
+        <div id="pedestals"></div>
       </div>
       <div class="card board" style="--accent:var(--aqua)">
-        <h3 class="neon" style="--accent:var(--aqua);margin-top:0">LEADERBOARD</h3>
-        <table id="board" style="margin:0 auto"></table>
+        <h3 class="neon" style="--accent:var(--aqua);margin:0">LEADERBOARD</h3>
+        <div class="tabs">
+          <button class="tab on" data-tab="crew">MY CREW</button>
+          <button class="tab" data-tab="all">EVERYONE</button>
+        </div>
+        <table id="board"></table>
+        <p class="hint" id="board-hint"></p>
       </div>
     </div>
   </div>
@@ -335,56 +384,122 @@
       location.href = 'games/' + id + '/index.html';
     }
 
+    var dlgTimer = null;
+    function captainSays(text) {
+      var el = document.getElementById('dlg-text');
+      clearInterval(dlgTimer);
+      el.textContent = '';
+      var pc = document.getElementById('dlg-portrait').getContext('2d');
+      pc.clearRect(0, 0, 60, 50);
+      AIViceSprite.draw(pc, { body: '#8beaff', accent: '#ff2fb3' }, 0, 0, 0, 5);
+      var i = 0;
+      if (REDUCED) { el.textContent = text; return; }
+      dlgTimer = setInterval(function () {
+        el.textContent = text.slice(0, ++i);
+        if (i >= text.length) clearInterval(dlgTimer);
+      }, 28);
+    }
+
+    var boardTimer = null, boardTab = 'crew';
+
     function openAiCenter() {
-      renderShop();
+      renderPedestals();
       renderBoard();
+      clearInterval(boardTimer);
+      boardTimer = setInterval(renderBoard, 10000);
       overlay.classList.add('open');
+      var p = AIVice.getPlayer();
+      captainSays('Welcome to the AI Center' + (p.name ? ', ' + p.name : '') +
+        '. Spend those tokens wisely — the leaderboard is watching.');
     }
 
     document.getElementById('back-to-map').addEventListener('click', function () {
       overlay.classList.remove('open');
+      clearInterval(boardTimer);
+      clearInterval(dlgTimer);
       map.style.transform = 'scale(1)';
       resetActors();
       busy = false;
       refreshHud();
     });
 
-    function renderShop() {
+    document.querySelectorAll('.tab').forEach(function (t) {
+      t.addEventListener('click', function () {
+        boardTab = t.dataset.tab;
+        document.querySelectorAll('.tab').forEach(function (x) {
+          x.classList.toggle('on', x === t);
+        });
+        renderBoard();
+      });
+    });
+
+    function renderPedestals() {
       document.getElementById('shop-tokens').textContent = AIVice.getTokens();
-      var wrap = document.getElementById('chars');
+      var wrap = document.getElementById('pedestals');
       wrap.innerHTML = '';
       AIVice.getCharacters().forEach(function (c) {
-        var row = document.createElement('div');
-        row.className = 'char';
-        row.innerHTML =
-          '<span class="swatch" style="background:' + c.colors.accent + ';box-shadow:0 0 10px ' + c.colors.accent + '"></span>' +
-          '<span style="flex:1"><b>' + c.name + '</b><br><span class="pixel">' +
-          (c.owned ? 'OWNED' : c.price + ' TOKENS') + '</span></span>';
+        var ped = document.createElement('div');
+        ped.className = 'pedestal' + (c.active ? ' active' : '');
+        var cv = document.createElement('canvas');
+        cv.width = 48; cv.height = 40;
+        AIViceSprite.draw(cv.getContext('2d'), c.colors, 0, 0, 0, 4);
+        ped.appendChild(cv);
+        var nm = document.createElement('div');
+        nm.innerHTML = '<b>' + c.name + '</b>';
+        ped.appendChild(nm);
+        var pr = document.createElement('span');
+        pr.className = 'price';
+        pr.textContent = c.owned ? 'OWNED' : c.price + ' TOKENS';
+        ped.appendChild(pr);
         var btn = document.createElement('button');
         btn.className = 'btn';
-        btn.textContent = c.active ? 'EQUIPPED' : c.owned ? 'EQUIP' : 'BUY';
+        btn.textContent = c.active ? 'EQUIPPED' : c.owned ? 'EQUIP' : 'REDEEM';
         btn.disabled = c.active;
         btn.onclick = function () {
-          if (c.owned) AIVice.equip(c.id); else AIVice.buy(c.id);
-          renderShop();
+          if (c.owned) AIVice.setActiveCharacter(c.id);
+          else if (!AIVice.redeemCharacter(c.id)) return;
+          renderPedestals();
           refreshHud();
         };
-        row.appendChild(btn);
-        wrap.appendChild(row);
+        ped.appendChild(btn);
+        wrap.appendChild(ped);
       });
     }
 
     function renderBoard() {
-      var names = { 'python-lab': 'Programming Lab', 'robotics': 'Robotics', 'dx-lab': 'DX Lab', 'matrix-motel': 'Matrix Motel' };
-      var rows = Object.keys(names).map(function (id) {
-        var done = AIVice.isComplete(id);
-        return '<tr><td style="color:' + (done ? 'var(--aqua)' : '#8a7fb0') + '">' + names[id] +
-          '</td><td class="pixel" style="color:' + (done ? 'var(--sun)' : '#5a5080') + '">' +
-          (done ? 'CLEARED +50' : '—') + '</td></tr>';
+      var me = AIVice.getPlayer();
+      var opts = { limit: 20 };
+      var hint = document.getElementById('board-hint');
+      if (boardTab === 'crew') {
+        if (me.crew) { opts.crewCode = me.crew; hint.textContent = 'CREW: ' + me.crew; }
+        else hint.textContent = 'No crew code set — showing everyone.';
+      } else {
+        hint.textContent = '';
+      }
+      AIVice.getLeaderboard(opts).then(function (rows) {
+        var tbl = document.getElementById('board');
+        if (!rows.length) {
+          tbl.innerHTML = '';
+          hint.textContent = hint.textContent || 'No scores yet — be the first.';
+          return;
+        }
+        var crowns = ['#ffd23f', '#c0c0c0', '#cd7f32'];
+        tbl.innerHTML = rows.map(function (r, i) {
+          var rank = i < 3 ? '<span style="color:' + crowns[i] + '">&#9830;</span>' : String(i + 1);
+          var mine = r.player_name === me.name && me.name;
+          return '<tr' + (mine ? ' class="me"' : '') + '>' +
+            '<td>' + rank + '</td><td>' + esc(r.player_name) + '</td>' +
+            '<td class="pixel" style="color:var(--sun)">' + r.total_points + '</td>' +
+            '<td style="color:#8a7fb0">' + (r.crew_code || '') + '</td>' +
+            '<td style="color:#8a7fb0">' + r.games_played + ' games</td></tr>';
+        }).join('');
       });
-      rows.push('<tr><td style="border-top:1px solid #444;color:var(--sun)">TOTAL TOKENS</td>' +
-        '<td class="pixel" style="border-top:1px solid #444;color:var(--sun)">' + AIVice.getTokens() + '</td></tr>');
-      document.getElementById('board').innerHTML = rows.join('');
+    }
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
     }
 
     refreshHud();
