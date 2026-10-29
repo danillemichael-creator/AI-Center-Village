@@ -5,15 +5,733 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Programming Lab — AI Vice</title>
   <link rel="stylesheet" href="../../shared/theme.css">
-  <style>body { --accent: var(--python-lab); }</style>
+  <style>
+    body { --accent: var(--python-lab); }
+    .screen { padding-top: 16px; }
+    #status { color: var(--sun); margin: 6px 0 8px; }
+    #status.ready { color: var(--aqua); }
+    canvas {
+      display: block; margin: 0 auto; width: 100%; max-width: 608px;
+      image-rendering: pixelated; border: 3px solid #000;
+      box-shadow: 0 0 0 2px var(--aqua), 0 0 22px rgba(46, 230, 255, 0.45); background: #000;
+    }
+    .help { font-size: 20px; opacity: 0.85; margin: 10px 0; }
+    .overlay {
+      display: none; position: fixed; inset: 0; z-index: 10;
+      background: rgba(10, 5, 24, 0.9); padding: 24px 12px; overflow: auto;
+    }
+    .overlay.open { display: block; }
+    .terminal { max-width: 720px; margin: 0 auto; text-align: left; }
+    .terminal h2 { margin: 0 0 6px; font-size: 32px; }
+    .task { font-size: 22px; margin: 8px 0 12px; }
+    textarea {
+      width: 100%; height: 190px; resize: vertical; padding: 10px;
+      background: #05020d; color: var(--aqua); border: 2px solid var(--plum);
+      font-family: 'VT323', 'Courier New', monospace; font-size: 22px; line-height: 1.15; tab-size: 4;
+    }
+    textarea:focus { outline: none; border-color: var(--aqua); }
+    .out {
+      background: #05020d; border-left: 4px solid var(--plum); padding: 8px 10px;
+      min-height: 2.2em; white-space: pre-wrap; margin: 10px 0 0; font-size: 21px;
+    }
+    .out.good { border-color: var(--aqua); color: var(--aqua); }
+    .out.bad { border-color: var(--pink); color: #ffb3e1; }
+    .out.hint { border-color: var(--sun); color: var(--sun); }
+    .row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 8px; }
+    .row .small { font-size: 18px; opacity: 0.7; margin-left: auto; }
+    .choice { display: block; width: 100%; text-align: left; margin: 6px 0; padding: 10px 12px; cursor: pointer;
+      background: #05020d; color: #eaf6ff; border: 2px solid var(--plum); border-radius: 4px;
+      font-family: 'VT323', 'Courier New', monospace; font-size: 22px; }
+    .choice:hover { border-color: var(--aqua); }
+    .choice.picked { border-color: var(--aqua); background: #0b2a33; }
+    .answer { width: 100%; padding: 10px; margin-top: 10px; background: #05020d; color: var(--aqua);
+      border: 2px solid var(--plum); font-family: 'VT323', 'Courier New', monospace; font-size: 22px; }
+    .answer:focus { outline: none; border-color: var(--aqua); }
+    .win { max-width: 560px; margin: 60px auto 0; text-align: center; }
+    .win h2 { font-size: 44px; margin: 6px 0; }
+    .pad { display: none; justify-content: center; gap: 6px; margin: 10px 0; }
+    .pad .btn { margin: 0; padding: 14px 18px; }
+    @media (hover: none) { .pad { display: flex; } }
+  </style>
 </head>
 <body>
   <div class="screen">
-    <h1 class="neon">Programming Lab</h1>
-    <p class="pixel">PYTHON CODING</p>
-    <p>Game under construction — check back soon.</p>
-    <button class="btn" onclick="AIVice.backToHub()">Back to AI Center</button>
+    <h1 class="neon" style="margin:0">Programming Lab</h1>
+    <div class="pixel" id="status">BOOTING PYTHON...</div>
+    <canvas id="game" width="608" height="480"></canvas>
+    <div class="pad">
+      <button class="btn" data-dir="left">&#9664;</button>
+      <button class="btn" data-dir="up">&#9650;</button>
+      <button class="btn" data-dir="down">&#9660;</button>
+      <button class="btn" data-dir="right">&#9654;</button>
+    </div>
+    <p class="help">Arrow keys or WASD to move. Walk through a doorway to enter a room, then walk into the glowing tablet and answer its 3 Python questions.</p>
+    <button class="btn ghost" onclick="AIVice.backToHub()">Back to AI Center</button>
   </div>
+
+  <!-- Question tablet -->
+  <div class="overlay" id="terminal">
+    <div class="terminal card">
+      <div class="pixel" id="termRoom" style="color:var(--sun)">ROOM 1 / VARIABLES</div>
+      <h2 class="neon" id="termTitle">Code tablet</h2>
+      <div class="pixel" id="qNum" style="color:var(--aqua)">QUESTION 1 OF 3</div>
+      <div class="task" id="termTask"></div>
+      <pre class="out" id="qCode" style="display:none;color:#eaf6ff"></pre>
+      <div id="choices"></div>
+      <input id="answer" class="answer" placeholder="Type what it prints" autocomplete="off" style="display:none" />
+      <textarea id="code" spellcheck="false" autocomplete="off" autocapitalize="off" style="display:none"></textarea>
+      <div class="row">
+        <button class="btn" id="runBtn">CHECK</button>
+        <button class="btn ghost" id="hintBtn" style="display:none">HINT</button>
+        <button class="btn ghost" id="closeBtn">CLOSE</button>
+        <span class="small">Enter checks · Esc closes</span>
+      </div>
+      <div class="out" id="out"></div>
+    </div>
+  </div>
+
+  <!-- Win screen -->
+  <div class="overlay" id="winScreen">
+    <div class="win card">
+      <div class="pixel" style="color:var(--sun)">ALL 4 ROOMS CLEARED</div>
+      <h2 class="neon">LAB CLEARED</h2>
+      <p id="winText"></p>
+      <button class="btn" onclick="AIVice.backToHub()">Back to AI Center</button>
+      <button class="btn ghost" onclick="location.reload()">Play again</button>
+    </div>
+  </div>
+
   <script src="../../shared/wallet.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ---------------------------------------------------------------- Rooms
+    // Each room's tablet is a Python task. Every case runs: before + player code + after,
+    // and what it prints must match `expected` (spacing is ignored).
+    var ROOMS = [
+      {
+        title: 'VARIABLES', name: 'The Welcome Chamber', side: 'W',
+        wall: '#14506b', brick: '#1d6f8f', floor: '#0c2230', floor2: '#123247',
+        blocks: [[5, 4], [13, 4], [5, 8], [13, 8]], deco: 'statue',
+        questions: [
+          { type: 'choice', q: 'Which line stores the number 5 in a variable called score?',
+            options: ['score = 5', '5 = score', 'score == 5', 'print(score, 5)'], answer: 'score = 5',
+            explain: 'One = puts the value on the right into the name on the left.' },
+          { type: 'predict', q: 'What does this print?', code: 'x = 4\nx = x + 3\nprint(x)' },
+          { type: 'code', q: 'This snippet is broken. Fix it so it prints exactly: Welcome to Miami',
+            starter: 'city = "Miami"\nprint("Welcome to " + citty)\n',
+            hint: 'Read the error: Python has no variable called "citty". The variable is spelled "city".',
+            cases: [{ expected: 'Welcome to Miami' }] }
+        ]
+      },
+      {
+        title: 'IF / ELSE', name: 'The Decision Chamber', side: 'N',
+        wall: '#3a1857', brick: '#55237d', floor: '#170a28', floor2: '#22103a',
+        blocks: [[4, 3], [4, 4], [14, 3], [14, 4], [4, 8], [4, 9], [14, 8], [14, 9]], deco: 'statue',
+        questions: [
+          { type: 'choice', q: 'What does == check in Python?',
+            options: ['Whether two values are equal', 'It stores a value in a variable', 'Whether a number is bigger', 'It ends the program'],
+            answer: 'Whether two values are equal',
+            explain: '== compares; a single = assigns. Mixing them up is the most common beginner bug.' },
+          { type: 'predict', q: 'What does this print?', code: 'score = 72\nif score >= 90:\n    print("A")\nelif score >= 70:\n    print("C")\nelse:\n    print("F")' },
+          { type: 'code', q: 'A variable called power is already set. Print "door opens" if power is 5 or more, otherwise print "door stays shut".',
+            starter: '# power already exists\n',
+            hint: 'if power >= 5:\n    print("door opens")\nelse:\n    ... (indent the line under else too)',
+            cases: [
+              { before: 'power = 7', expected: 'door opens' },
+              { before: 'power = 5', expected: 'door opens' },
+              { before: 'power = 2', expected: 'door stays shut' }
+            ] }
+        ]
+      },
+      {
+        title: 'FOR LOOP', name: 'The Torch Gallery', side: 'E',
+        wall: '#5a2a12', brick: '#7a3d1c', floor: '#1e0f08', floor2: '#2a160c',
+        blocks: [[4, 3], [4, 6], [4, 9], [14, 3], [14, 6], [14, 9]], deco: 'torch',
+        questions: [
+          { type: 'choice', q: 'Which numbers does range(3) give you?',
+            options: ['0, 1, 2', '1, 2, 3', '0, 1, 2, 3', '3, 3, 3'], answer: '0, 1, 2',
+            explain: 'range starts at 0 and stops just BEFORE the number you give it.' },
+          { type: 'predict', q: 'What does this print?', code: 'total = 0\nfor n in [2, 4, 6]:\n    total += n\nprint(total)' },
+          { type: 'code', q: 'A variable called torches is already set. Light every torch: print "torch 1 lit", "torch 2 lit", ... up to torches.',
+            starter: '# torches already exists\n',
+            hint: 'for i in range(1, torches + 1):\n    print(f"torch {i} lit")   <- an f-string puts i inside the text',
+            cases: [
+              { before: 'torches = 3', expected: 'torch 1 lit\ntorch 2 lit\ntorch 3 lit' },
+              { before: 'torches = 1', expected: 'torch 1 lit' }
+            ] }
+        ]
+      },
+      {
+        title: 'FUNCTIONS', name: 'The Boss Vault', side: 'S',
+        wall: '#5c0f3d', brick: '#8a1a5c', floor: '#1c0614', floor2: '#2a0a1f',
+        blocks: [[6, 3], [12, 3], [6, 8], [12, 8]], deco: 'boss',
+        questions: [
+          { type: 'choice', q: 'Which keyword sends a value back out of a function?',
+            options: ['return', 'print', 'def', 'output'], answer: 'return',
+            explain: 'print only shows a value on screen; return hands it back so other code can use it.' },
+          { type: 'predict', q: 'What does this print?', code: 'def add(a, b):\n    return a + b\n\nprint(add(2, 5))' },
+          { type: 'code', q: 'BOSS QUESTION: write a function count_evens(numbers) that returns how many numbers in the list are even.',
+            starter: 'def count_evens(numbers):\n    # your code here\n    pass\n',
+            hint: 'A number n is even when n % 2 == 0. Start a counter at 0, loop over numbers, add 1 for each even one, then return the counter.',
+            cases: [
+              { after: 'print(count_evens([1, 2, 3, 4]))', expected: '2' },
+              { after: 'print(count_evens([]))', expected: '0' },
+              { after: 'print(count_evens([7, 9]))', expected: '0' },
+              { after: 'print(count_evens([10, -2, 3]))', expected: '2' }
+            ] }
+        ]
+      }
+    ];
+
+    // --------------------------------------------------- Python (Pyodide)
+    // Runs in a background worker so an infinite loop can't freeze the page.
+    var PYODIDE_URL = 'https://cdn.jsdelivr.net/pyodide/v314.0.7/full/';
+    var WORKER_SRC = [
+      "importScripts('" + PYODIDE_URL + "pyodide.js');",
+      "var ready = loadPyodide({ indexURL: '" + PYODIDE_URL + "' }).then(function (py) { self.postMessage({ type: 'ready' }); return py; });",
+      "self.onmessage = async function (e) {",
+      "  if (e.data.type !== 'run') return;",
+      "  var py = await ready;",
+      "  var output = '';",
+      "  py.setStdout({ batched: function (s) { output += s + '\\n'; } });",
+      "  py.setStderr({ batched: function (s) { output += s + '\\n'; } });",
+      "  try {",
+      "    await py.runPythonAsync(e.data.code, { globals: py.globals.get('dict')() });",
+      "    self.postMessage({ type: 'result', ok: true, output: output });",
+      "  } catch (err) {",
+      "    self.postMessage({ type: 'result', ok: false, output: output, error: String(err.message).trim().split('\\n').pop() });",
+      "  }",
+      "};"
+    ].join('\n');
+    var workerUrl = URL.createObjectURL(new Blob([WORKER_SRC], { type: 'text/javascript' }));
+    var worker, pyReady, isReady = false;
+
+    function startWorker() {
+      isReady = false;
+      worker = new Worker(workerUrl);
+      pyReady = new Promise(function (resolve) {
+        worker.onmessage = function (e) {
+          if (e.data.type === 'ready') { isReady = true; resolve(); }
+        };
+      });
+      pyReady.then(setReadyStatus);
+    }
+
+    function runPython(code) {
+      return pyReady.then(function () {
+        return new Promise(function (resolve) {
+          var timer = setTimeout(function () {
+            worker.terminate();
+            startWorker();
+            resolve({ ok: false, output: '', error: 'Your code ran too long. Check for an infinite loop!' });
+          }, 3000);
+          worker.onmessage = function (e) {
+            if (e.data.type !== 'result') return;
+            clearTimeout(timer);
+            resolve(e.data);
+          };
+          worker.postMessage({ type: 'run', code: code });
+        });
+      });
+    }
+
+    var statusEl = document.getElementById('status');
+    function setReadyStatus() {
+      statusEl.textContent = 'PYTHON READY';
+      statusEl.className = 'pixel ready';
+      if (terminalOpen) runBtn.disabled = false;
+    }
+    startWorker();
+
+    // ---------------------------------------------------------- The world
+    var TILE = 32, COLS = 19, ROWS = 13, HUD = 64;
+    var canvas = document.getElementById('game');
+    var ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    // Doorways in the hall, one per room, in the middle of each wall
+    var HALL_DOORS = { W: { x: 1, y: 6 }, N: { x: 9, y: 1 }, E: { x: 17, y: 6 }, S: { x: 9, y: 11 } };
+    var IN_FRONT = { W: { x: 2, y: 6 }, N: { x: 9, y: 2 }, E: { x: 16, y: 6 }, S: { x: 9, y: 10 } };
+    var HALL_BLOCKS = [[4, 3], [14, 3], [4, 9], [14, 9]];
+    var ROOM_EXIT = { x: 9, y: 11 };
+    var TABLET = { x: 9, y: 3 };
+    var PORTAL = { x: 9, y: 6 };
+
+    var scene = 'hall';           // 'hall' or a room index 0-3
+    var player = { x: 9, y: 8, dir: 'up' };
+    var cleared = [false, false, false, false];
+    var fade = 0, fadeDir = 0, pendingSwitch = null;
+    var flash = 0, message = '', messageUntil = 0;
+    var hintsUsed = 0, finished = false;
+
+    function allCleared() { return cleared.every(Boolean); }
+    function isUnlocked(i) { return i === 0 || cleared[i - 1]; }
+    function roomOfSide(side) { for (var i = 0; i < 4; i++) if (ROOMS[i].side === side) return i; return -1; }
+
+    function say(text, ms) { message = text; messageUntil = performance.now() + (ms || 2600); }
+
+    function blocksHere() { return scene === 'hall' ? HALL_BLOCKS : ROOMS[scene].blocks; }
+    function isBlock(x, y) {
+      var b = blocksHere();
+      for (var i = 0; i < b.length; i++) if (b[i][0] === x && b[i][1] === y) return true;
+      return false;
+    }
+    function isWall(x, y) { return x <= 1 || y <= 1 || x >= COLS - 2 || y >= ROWS - 2; }
+    function doorAt(x, y) {
+      if (scene === 'hall') {
+        for (var s in HALL_DOORS) if (HALL_DOORS[s].x === x && HALL_DOORS[s].y === y) return s;
+        return null;
+      }
+      return (x === ROOM_EXIT.x && y === ROOM_EXIT.y) ? 'exit' : null;
+    }
+
+    function switchScene(next, pos, dir) {
+      if (fadeDir) return;
+      pendingSwitch = { next: next, pos: pos, dir: dir };
+      fadeDir = 1;
+    }
+
+    function applySwitch() {
+      scene = pendingSwitch.next;
+      player.x = pendingSwitch.pos.x; player.y = pendingSwitch.pos.y; player.dir = pendingSwitch.dir;
+      pendingSwitch = null;
+      if (scene === 'hall') {
+        if (allCleared()) say('A portal opened in the middle of the hall!', 4000);
+      } else {
+        say(cleared[scene] ? 'Room already cleared.' : ROOMS[scene].name + ': walk into the tablet. Answer 3 questions!', 3000);
+      }
+    }
+
+    function move(dx, dy, dir) {
+      if (terminalOpen || finished || fadeDir) return;
+      player.dir = dir;
+      var nx = player.x + dx, ny = player.y + dy;
+      var door = doorAt(nx, ny);
+
+      if (scene === 'hall') {
+        if (door) {
+          var i = roomOfSide(door);
+          if (!isUnlocked(i)) { say('Locked! Clear Room ' + i + ' first.'); return; }
+          switchScene(i, { x: 9, y: 10 }, 'up');
+          return;
+        }
+        if (allCleared() && nx === PORTAL.x && ny === PORTAL.y) { player.x = nx; player.y = ny; win(); return; }
+      } else {
+        if (door === 'exit') { switchScene('hall', IN_FRONT[ROOMS[scene].side], oppositeDir(ROOMS[scene].side)); return; }
+        if (nx === TABLET.x && ny === TABLET.y) {
+          if (cleared[scene]) say('This tablet is already solved. Head back to the hall.');
+          else openTerminal();
+          return;
+        }
+      }
+      if (isWall(nx, ny) || isBlock(nx, ny)) return;
+      player.x = nx; player.y = ny;
+    }
+    function oppositeDir(side) { return { W: 'right', N: 'down', E: 'left', S: 'up' }[side]; }
+
+    var KEYS = {
+      ArrowUp: [0, -1, 'up'], w: [0, -1, 'up'], W: [0, -1, 'up'],
+      ArrowDown: [0, 1, 'down'], s: [0, 1, 'down'], S: [0, 1, 'down'],
+      ArrowLeft: [-1, 0, 'left'], a: [-1, 0, 'left'], A: [-1, 0, 'left'],
+      ArrowRight: [1, 0, 'right'], d: [1, 0, 'right'], D: [1, 0, 'right']
+    };
+    document.addEventListener('keydown', function (e) {
+      if (terminalOpen) {
+        if (e.key === 'Escape') closeTerminal();
+        return; // let the player type freely in the editor
+      }
+      var k = KEYS[e.key];
+      if (k) { e.preventDefault(); move(k[0], k[1], k[2]); }
+    });
+    document.querySelectorAll('.pad .btn').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var map = { up: KEYS.ArrowUp, down: KEYS.ArrowDown, left: KEYS.ArrowLeft, right: KEYS.ArrowRight };
+        var k = map[b.dataset.dir];
+        move(k[0], k[1], k[2]);
+      });
+    });
+
+    // ------------------------------------------------------- Drawing
+    var C = { aqua: '#2ee6ff', pink: '#ff2fb3', sun: '#ffd23f', sunset: '#ff7a3d', night: '#0a0518', plum: '#2b1140' };
+    var HALL_STYLE = { wall: '#1b3f66', brick: '#2a5c8f', floor: '#0b1a2e', floor2: '#11253f' };
+
+    function rect(x, y, w, h, color) { ctx.fillStyle = color; ctx.fillRect(x, y + HUD, w, h); }
+    function text(s, x, y, color, size) {
+      ctx.fillStyle = color; ctx.font = (size || 10) + 'px "Press Start 2P", monospace'; ctx.fillText(s, x, y);
+    }
+
+    function drawWallTile(x, y, st) {
+      var px = x * TILE, py = y * TILE;
+      rect(px, py, TILE, TILE, st.wall);
+      // brick pattern
+      ctx.fillStyle = st.brick;
+      for (var r = 0; r < 4; r++) {
+        var off = (r % 2) * 8;
+        for (var c = -1; c < 3; c++) ctx.fillRect(px + c * 16 + off + 1, py + HUD + r * 8 + 1, 14, 6);
+      }
+    }
+
+    function drawFloorTile(x, y, st) {
+      var px = x * TILE, py = y * TILE;
+      rect(px, py, TILE, TILE, st.floor);
+      rect(px + 1, py + 1, TILE - 2, TILE - 2, st.floor2);
+      rect(px + 12, py + 12, 8, 8, st.floor);        // little diamond studs
+      rect(px + 14, py + 10, 4, 12, st.floor);
+      rect(px + 10, py + 14, 12, 4, st.floor);
+    }
+
+    function drawDoorway(x, y, side, state, label) {
+      // state: 'open' | 'locked' | 'cleared' | 'exit'
+      var px = x * TILE, py = y * TILE;
+      var t = performance.now();
+      rect(px, py, TILE, TILE, '#000');
+      // arch frame
+      var frame = state === 'locked' ? C.pink : state === 'cleared' ? C.aqua : '#9aa7c7';
+      ctx.fillStyle = frame;
+      if (side === 'N' || side === 'S' || side === 'exit') {
+        ctx.fillRect(px - 4, py + HUD, 4, TILE); ctx.fillRect(px + TILE, py + HUD, 4, TILE);
+      } else {
+        ctx.fillRect(px, py + HUD - 4, TILE, 4); ctx.fillRect(px, py + HUD + TILE, TILE, 4);
+      }
+      if (state === 'locked') {
+        ctx.fillStyle = C.pink;
+        for (var b = 4; b < TILE; b += 8) {
+          if (side === 'N' || side === 'S') ctx.fillRect(px + b, py + HUD, 3, TILE);
+          else ctx.fillRect(px, py + HUD + b, TILE, 3);
+        }
+        rect(px + 10, py + 14, 12, 10, C.sun);   // padlock
+        rect(px + 12, py + 9, 8, 6, C.sun);
+        rect(px + 14, py + 11, 4, 4, '#000');
+        rect(px + 15, py + 17, 2, 4, '#000');
+      } else if (state === 'cleared') {
+        ctx.globalAlpha = 0.35 + 0.25 * Math.sin(t / 220);
+        rect(px + 2, py + 2, TILE - 4, TILE - 4, C.aqua);
+        ctx.globalAlpha = 1;
+      }
+      if (label) {
+        var lx = px + 10, ly = py + HUD;
+        if (side === 'N') ly = py + HUD - 10 + 0;
+        if (side === 'N') { lx = px + TILE + 10; ly = py + HUD + 22; }
+        if (side === 'S') { lx = px + TILE + 10; ly = py + HUD + 22; }
+        if (side === 'W') { lx = px + 2; ly = py + HUD - 10; }
+        if (side === 'E') { lx = px + 10; ly = py + HUD - 10; }
+        text(label, lx, ly, state === 'locked' ? C.pink : C.sun, 10);
+      }
+    }
+
+    function drawStatue(x, y, eye) {
+      var px = x * TILE, py = y * TILE;
+      ctx.globalAlpha = 0.35; rect(px + 4, py + 26, 24, 5, '#000'); ctx.globalAlpha = 1;
+      rect(px + 4, py + 6, 24, 22, '#5d6b8a');
+      rect(px + 6, py + 2, 20, 8, '#7d8bab');
+      rect(px + 4, py + 24, 24, 4, '#3e4862');
+      rect(px + 9, py + 12, 4, 4, eye || '#1a1f2e');
+      rect(px + 19, py + 12, 4, 4, eye || '#1a1f2e');
+      rect(px + 12, py + 19, 8, 2, '#3e4862');
+    }
+
+    function drawTorch(x, y, lit, t) {
+      var px = x * TILE, py = y * TILE;
+      rect(px + 8, py + 18, 16, 10, '#3b2a22');
+      rect(px + 6, py + 16, 20, 4, '#5a4032');
+      if (lit) {
+        var f = Math.sin(t / 80 + x * 3) * 2;
+        ctx.globalAlpha = 0.18; rect(px - 10, py - 12, 52, 50, C.sun); ctx.globalAlpha = 1;
+        rect(px + 9, py + 6 - f, 14, 11 + f, C.sunset);
+        rect(px + 12, py + 3 - f, 8, 9, C.sun);
+      } else {
+        rect(px + 12, py + 12, 8, 5, '#2a1c16');
+      }
+    }
+
+    function drawTablet(solved, t) {
+      var px = TABLET.x * TILE, py = TABLET.y * TILE;
+      ctx.globalAlpha = 0.35; rect(px + 2, py + 28, 28, 4, '#000'); ctx.globalAlpha = 1;
+      rect(px + 2, py + 2, 28, 28, '#3a3f55');
+      rect(px + 4, py + 4, 24, 20, '#05020d');
+      var col = solved ? C.aqua : C.pink;
+      ctx.globalAlpha = solved ? 1 : 0.6 + 0.4 * Math.sin(t / 180);
+      rect(px + 6, py + 7, 14, 2, col);
+      rect(px + 6, py + 12, 18, 2, col);
+      rect(px + 6, py + 17, 10, 2, col);
+      if (!solved && Math.floor(t / 400) % 2) rect(px + 18, py + 17, 4, 3, col);
+      ctx.globalAlpha = 1;
+      if (!solved) { ctx.globalAlpha = 0.15 + 0.1 * Math.sin(t / 180); rect(px - 6, py - 6, 44, 44, C.pink); ctx.globalAlpha = 1; }
+    }
+
+    function drawPortal(t) {
+      var cx = PORTAL.x * TILE + 16, cy = PORTAL.y * TILE + 16 + HUD;
+      for (var r = 0; r < 3; r++) {
+        ctx.strokeStyle = r % 2 ? C.pink : C.aqua;
+        ctx.lineWidth = 3;
+        ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t / 200 + r);
+        ctx.beginPath(); ctx.arc(cx, cy, 6 + r * 5 + 2 * Math.sin(t / 150 + r), 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawPlayer(t) {
+      var ch = AIVice.getActiveCharacter().colors;
+      var px = player.x * TILE, py = player.y * TILE;
+      var bob = Math.sin(t / 200) > 0 ? 1 : 0;
+      ctx.globalAlpha = 0.35; rect(px + 6, py + 27, 20, 3, '#000'); ctx.globalAlpha = 1;
+      rect(px + 8, py + 12 - bob, 16, 14, ch.accent);
+      rect(px + 10, py + 4 - bob, 12, 10, ch.body);
+      rect(px + 10, py + 4 - bob, 12, 3, C.night);
+      var eyeY = py + 8 - bob;
+      if (player.dir === 'left') rect(px + 11, eyeY, 2, 2, C.night);
+      else if (player.dir === 'right') rect(px + 19, eyeY, 2, 2, C.night);
+      else if (player.dir === 'down') { rect(px + 12, eyeY, 2, 2, C.night); rect(px + 18, eyeY, 2, 2, C.night); }
+      rect(px + 9, py + 26 - bob, 5, 3, C.plum);
+      rect(px + 18, py + 26 - bob, 5, 3, C.plum);
+    }
+
+    function drawHud(t) {
+      ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, HUD);
+      text(scene === 'hall' ? 'LAB HALL' : 'ROOM ' + (scene + 1) + ' ' + ROOMS[scene].title, 14, 24, C.sun, 10);
+      // mini-map: the hall in the middle, a room on each side
+      var mx = 470, my = 8, s = 14;
+      var spots = { N: [mx + s, my], W: [mx, my + s], E: [mx + 2 * s, my + s], S: [mx + s, my + 2 * s] };
+      ctx.fillStyle = scene === 'hall' ? C.sun : '#555';
+      ctx.fillRect(mx + s + 1, my + s + 1, s - 2, s - 2);
+      for (var i = 0; i < 4; i++) {
+        var p = spots[ROOMS[i].side];
+        ctx.fillStyle = scene === i ? C.sun : cleared[i] ? C.aqua : isUnlocked(i) ? '#9aa7c7' : C.pink;
+        ctx.fillRect(p[0] + 1, p[1] + 1, s - 2, s - 2);
+      }
+      var done = cleared.filter(Boolean).length;
+      text('CLEARED ' + done + '/4', 14, 48, C.aqua, 10);
+      text('TOKENS ' + AIVice.getTokens(), 220, 48, C.sun, 10);
+      if (scene !== 'hall') text('QUESTIONS ' + (cleared[scene] ? 3 : qIndex[scene]) + '/3', 220, 24, C.pink, 10);
+    }
+
+    function frame(t) {
+      var st = scene === 'hall' ? HALL_STYLE : ROOMS[scene];
+      for (var y = 0; y < ROWS; y++) {
+        for (var x = 0; x < COLS; x++) {
+          if (isWall(x, y)) drawWallTile(x, y, st); else drawFloorTile(x, y, st);
+        }
+      }
+      // inner wall edge
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
+      ctx.strokeRect(2 * TILE, 2 * TILE + HUD, (COLS - 4) * TILE, (ROWS - 4) * TILE);
+
+      if (scene === 'hall') {
+        for (var i = 0; i < 4; i++) {
+          var side = ROOMS[i].side, d = HALL_DOORS[side];
+          var state = cleared[i] ? 'cleared' : isUnlocked(i) ? 'open' : 'locked';
+          drawDoorway(d.x, d.y, side, state, String(i + 1));
+          // fill the outer wall tile behind the doorway too, so it reads as a passage
+          var ox = side === 'W' ? 0 : side === 'E' ? COLS - 1 : d.x;
+          var oy = side === 'N' ? 0 : side === 'S' ? ROWS - 1 : d.y;
+          rect(ox * TILE, oy * TILE, TILE, TILE, '#000');
+        }
+        HALL_BLOCKS.forEach(function (b) { drawStatue(b[0], b[1]); });
+        if (allCleared()) drawPortal(t);
+      } else {
+        var room = ROOMS[scene];
+        drawDoorway(ROOM_EXIT.x, ROOM_EXIT.y, 'exit', 'open', null);
+        rect(ROOM_EXIT.x * TILE, (ROWS - 1) * TILE, TILE, TILE, '#000');
+        room.blocks.forEach(function (b) {
+          if (room.deco === 'torch') drawTorch(b[0], b[1], cleared[scene], t);
+          else if (room.deco === 'boss') drawStatue(b[0], b[1], cleared[scene] ? C.aqua : C.pink);
+          else drawStatue(b[0], b[1]);
+        });
+        drawTablet(cleared[scene], t);
+      }
+
+      drawPlayer(t);
+      drawHud(t);
+      if (message && t < messageUntil) {
+        ctx.font = '10px "Press Start 2P", monospace';
+        var w = Math.min(canvas.width - 24, ctx.measureText(message).width + 28);
+        ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect((canvas.width - w) / 2, HUD + 8, w, 26);
+        ctx.strokeStyle = C.sun; ctx.lineWidth = 2; ctx.strokeRect((canvas.width - w) / 2, HUD + 8, w, 26);
+        ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center'; ctx.fillText(message, canvas.width / 2, HUD + 26); ctx.textAlign = 'left';
+      }
+
+      if (flash > 0) { ctx.globalAlpha = flash; ctx.fillStyle = C.aqua; ctx.fillRect(0, HUD, canvas.width, canvas.height - HUD); ctx.globalAlpha = 1; flash = Math.max(0, flash - 0.04); }
+
+      // fade between scenes
+      if (fadeDir) {
+        fade += 0.12 * fadeDir;
+        if (fade >= 1) { fade = 1; applySwitch(); fadeDir = -1; }
+        if (fade <= 0) { fade = 0; fadeDir = 0; }
+      }
+      if (fade > 0) { ctx.globalAlpha = fade; ctx.fillStyle = '#000'; ctx.fillRect(0, HUD, canvas.width, canvas.height - HUD); ctx.globalAlpha = 1; }
+
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+
+    // ------------------------------------------------------- Question tablet
+    var terminal = document.getElementById('terminal');
+    var codeEl = document.getElementById('code');
+    var answerEl = document.getElementById('answer');
+    var choicesEl = document.getElementById('choices');
+    var qCodeEl = document.getElementById('qCode');
+    var outEl = document.getElementById('out');
+    var runBtn = document.getElementById('runBtn');
+    var hintBtn = document.getElementById('hintBtn');
+    var terminalOpen = false, busy = false;
+    var qIndex = [0, 0, 0, 0];           // which question each room is on
+    var wrongTries = {}, hintUnlocked = {}, drafts = {}, picked = null;
+
+    function norm(s) { return String(s).trim().split(/\s+/).join(' '); }
+    function setOut(t, kind) { outEl.textContent = t; outEl.className = 'out' + (kind ? ' ' + kind : ''); }
+    function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+    function key() { return scene + '-' + qIndex[scene]; }
+
+    function openTerminal() {
+      terminalOpen = true;
+      showQuestion();
+      terminal.classList.add('open');
+    }
+
+    function showQuestion() {
+      var room = ROOMS[scene], q = room.questions[qIndex[scene]];
+      document.getElementById('termRoom').textContent = 'ROOM ' + (scene + 1) + ' / ' + room.title;
+      document.getElementById('termTitle').textContent = room.name;
+      document.getElementById('qNum').textContent = 'QUESTION ' + (qIndex[scene] + 1) + ' OF 3';
+      document.getElementById('termTask').textContent = q.q;
+      qCodeEl.style.display = q.type === 'predict' ? 'block' : 'none';
+      qCodeEl.textContent = q.code || '';
+      answerEl.style.display = q.type === 'predict' ? 'block' : 'none';
+      answerEl.value = '';
+      codeEl.style.display = q.type === 'code' ? 'block' : 'none';
+      if (q.type === 'code') codeEl.value = drafts[key()] != null ? drafts[key()] : q.starter;
+      choicesEl.innerHTML = '';
+      picked = null;
+      if (q.type === 'choice') {
+        shuffle(q.options).forEach(function (opt) {
+          var b = document.createElement('button');
+          b.className = 'choice';
+          b.textContent = opt;
+          b.onclick = function () {
+            picked = opt;
+            choicesEl.querySelectorAll('.choice').forEach(function (c) { c.classList.remove('picked'); });
+            b.classList.add('picked');
+          };
+          choicesEl.appendChild(b);
+        });
+      }
+      hintBtn.style.display = hintUnlocked[key()] ? 'inline-block' : 'none';
+      runBtn.textContent = q.type === 'code' ? 'RUN' : 'CHECK';
+      var needsPython = q.type !== 'choice';
+      runBtn.disabled = needsPython && !isReady;
+      if (needsPython && !isReady) setOut('Python is still booting up. One moment...', 'hint');
+      else setOut(q.type === 'choice' ? 'Pick an answer, then press CHECK.' : q.type === 'predict' ? 'Type the output, then press CHECK.' : 'Write your code, then press RUN.', '');
+      if (q.type === 'predict') answerEl.focus();
+      if (q.type === 'code') codeEl.focus();
+    }
+
+    function closeTerminal() {
+      if (typeof scene === 'number' && ROOMS[scene].questions[qIndex[scene]].type === 'code') drafts[key()] = codeEl.value;
+      terminalOpen = false;
+      terminal.classList.remove('open');
+    }
+
+    codeEl.addEventListener('keydown', function (e) {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        codeEl.setRangeText('    ', codeEl.selectionStart, codeEl.selectionEnd, 'end');
+      } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        check();
+      }
+    });
+    answerEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); check(); } });
+    runBtn.addEventListener('click', check);
+    document.getElementById('closeBtn').addEventListener('click', closeTerminal);
+    hintBtn.addEventListener('click', function () {
+      hintsUsed += 1;
+      setOut('HINT: ' + ROOMS[scene].questions[qIndex[scene]].hint, 'hint');
+    });
+
+    function check() {
+      if (busy) return;
+      var roomIdx = scene, room = ROOMS[roomIdx], q = room.questions[qIndex[roomIdx]];
+
+      if (q.type === 'choice') {
+        if (!picked) { setOut('Pick one of the answers first.', 'hint'); return; }
+        if (picked === q.answer) return correct(q.explain);
+        return setOut('Not quite. Try another answer.', 'bad');
+      }
+      if (!isReady) return;
+      busy = true;
+      runBtn.disabled = true;
+      setOut('Checking...', '');
+
+      if (q.type === 'predict') {
+        runPython(q.code).then(function (r) {
+          busy = false; runBtn.disabled = false;
+          if (norm(answerEl.value) === norm(r.output)) correct('');
+          else setOut('Not quite. Trace the code line by line and try again.', 'bad');
+        });
+        return;
+      }
+
+      var code = codeEl.value, i = 0;
+      (function next() {
+        if (i >= q.cases.length) { busy = false; runBtn.disabled = false; drafts[key()] = code; return correct(''); }
+        var tc = q.cases[i++];
+        runPython((tc.before || '') + '\n' + code + '\n' + (tc.after || '')).then(function (r) {
+          var fail = null;
+          if (!r.ok) fail = r.error;
+          else if (norm(r.output) !== norm(tc.expected)) {
+            var setup = tc.before ? '(with ' + tc.before.replace(/\n/g, ', ') + ')\n' : '';
+            fail = setup + 'Expected:\n' + tc.expected + '\n\nYour code printed:\n' + (r.output.trim() || '(nothing)');
+          }
+          if (!fail) return next();
+          busy = false; runBtn.disabled = false;
+          setOut(fail, 'bad');
+          var k = key();
+          wrongTries[k] = (wrongTries[k] || 0) + 1;
+          if (wrongTries[k] >= 2 && !hintUnlocked[k]) {
+            hintUnlocked[k] = true;
+            hintBtn.style.display = 'inline-block';
+            outEl.textContent += '\n\nStuck? A HINT button just unlocked.';
+          }
+        });
+      })();
+    }
+
+    function correct(explain) {
+      var roomIdx = scene;
+      var last = qIndex[roomIdx] === 2;
+      setOut((last ? 'ACCESS GRANTED. Room cleared!' : 'Correct!') + (explain ? ' ' + explain : ''), 'good');
+      busy = true;
+      runBtn.disabled = true;
+      setTimeout(function () {
+        busy = false;
+        runBtn.disabled = false;
+        if (!last) { qIndex[roomIdx] += 1; showQuestion(); return; }
+        closeTerminal();
+        cleared[roomIdx] = true;
+        flash = 0.85;
+        say(roomIdx < 3 ? 'Room ' + (roomIdx + 2) + ' is unlocked! Head back to the hall.' : 'Vault cleared! Return to the hall.', 4000);
+      }, explain ? 1800 : 900);
+    }
+
+    // ------------------------------------------------------------ Win
+    function win() {
+      finished = true;
+      var earned = 0;
+      if (AIVice.markComplete('python-lab')) {
+        AIVice.addTokens('python-lab', 50);
+        earned = 50;
+        if (hintsUsed === 0) { AIVice.addTokens('python-lab', 10); earned += 10; }
+      }
+      document.getElementById('winText').textContent = earned
+        ? '+' + earned + ' AI tokens' + (earned > 50 ? ' (includes a 10-token no-hints bonus)' : '') + '. You now have ' + AIVice.getTokens() + '.'
+        : 'You already earned your tokens for this lab. You have ' + AIVice.getTokens() + ' AI tokens.';
+      document.getElementById('winScreen').classList.add('open');
+    }
+
+    say('Room 1 is open. Find the door marked 1.', 4000);
+  })();
+  </script>
 </body>
 </html>
