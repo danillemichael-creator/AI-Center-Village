@@ -2,6 +2,68 @@ import type { LevelDef } from "../game/types";
 import { BOARD_H, BOARD_W, edgeGeometry } from "../game/geometry";
 import { KindIcon } from "./pixels";
 
+function relaxSwitches(
+  spots: { id: string; x: number; y: number }[],
+  nodes: { x: number; y: number }[],
+) {
+  const clearNodes = (min: number) => {
+    for (const spot of spots) {
+      for (let pass = 0; pass < 8; pass += 1) {
+        let fx = 0;
+        let fy = 0;
+        let hits = 0;
+        for (const node of nodes) {
+          const dx = spot.x - node.x;
+          const dy = spot.y - node.y;
+          const dist = Math.hypot(dx, dy) || 0.01;
+          if (dist < min) {
+            fx += (dx / dist) * (min - dist);
+            fy += (dy / dist) * (min - dist);
+            hits += 1;
+          }
+        }
+        if (!hits) break;
+        if (Math.hypot(fx, fy) < 1) spot.y -= 20;
+        else {
+          spot.x += fx;
+          spot.y += fy;
+        }
+      }
+    }
+  };
+  const separate = (min: number) => {
+    for (let pass = 0; pass < 10; pass += 1) {
+      for (let i = 0; i < spots.length; i += 1) {
+        for (let j = i + 1; j < spots.length; j += 1) {
+          const a = spots[i];
+          const b = spots[j];
+          if (!a || !b) continue;
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const dist = Math.hypot(dx, dy) || 0.01;
+          if (dist < min) {
+            const push = (min - dist) / 2;
+            const ox = dx === 0 && dy === 0 ? 0 : dx / dist;
+            const oy = dx === 0 && dy === 0 ? -1 : dy / dist;
+            a.x -= ox * push;
+            a.y -= oy * push;
+            b.x += ox * push;
+            b.y += oy * push;
+          }
+        }
+      }
+    }
+  };
+  clearNodes(112);
+  separate(74);
+  clearNodes(104);
+  separate(70);
+  for (const spot of spots) {
+    spot.x = Math.max(36, Math.min(BOARD_W - 36, spot.x));
+    spot.y = Math.max(22, Math.min(BOARD_H - 22, spot.y));
+  }
+}
+
 export function Board({
   level,
   infected,
@@ -34,6 +96,15 @@ export function Board({
   onInspect: (nodeId: string) => void;
 }) {
   const nodes = new Map(level.nodes.map((node) => [node.id, node]));
+  const spots = level.edges.flatMap((edge) => {
+    const a = nodes.get(edge.a);
+    const b = nodes.get(edge.b);
+    if (!a || !b) return [];
+    const geo = edgeGeometry(a, b, edge.bend ?? 0);
+    return [{ id: edge.id, x: geo.x, y: geo.y }];
+  });
+  relaxSwitches(spots, level.nodes);
+  const spotOf = new Map(spots.map((spot) => [spot.id, spot]));
 
   return (
     <div className={shake ? "board shake" : "board"} data-testid="network-board">
@@ -91,6 +162,7 @@ export function Board({
         const b = nodes.get(edge.b);
         if (!a || !b) return null;
         const geo = edgeGeometry(a, b, edge.bend ?? 0);
+        const spot = spotOf.get(edge.id) ?? { x: geo.x, y: geo.y };
         const cut = disabled.has(edge.id);
         const next = nextEdges.has(edge.id);
         const selected = selectedId === edge.id;
@@ -108,7 +180,7 @@ export function Board({
             ]
               .filter(Boolean)
               .join(" ")}
-            style={{ left: `${(geo.x / BOARD_W) * 100}%`, top: `${(geo.y / BOARD_H) * 100}%` }}
+            style={{ left: `${(spot.x / BOARD_W) * 100}%`, top: `${(spot.y / BOARD_H) * 100}%` }}
             onClick={() => onToggle(edge.id)}
             onMouseEnter={() => onSelect(edge.id)}
             data-testid={`switch-${edge.id}`}
