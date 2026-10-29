@@ -32,3 +32,10 @@ All art is AI-generated: `assets/map.png`, `assets/ai-center-room.png`, `assets/
 - Added Round 3 "Prompt Lab" (quiz moved to Round 4): the player builds a prompt from Role/Topic/Format/Style chips and a scripted in-browser "AI" responds; goal is to reproduce a target output exactly. Teaches specificity, constraints, and roles. Level-select screen added with Data Dash (platformer) shown as coming soon.
 - Added Data Dash, a side-scrolling platformer level (`dash.js`): run and jump down neon Ocean Drive, grab photos whose label matches the picture, skip mislabeled ones, stomp glitch bugs, respawn at checkpoints. At the flag the haul trains the same 1-NN model; 85% test accuracy clears DX Lab. Devin checked that grabbing everything (5 bad labels) fails at 75% and clean data reaches 100%.
 - Data Dash art pass, Super Mario World-style: outlined pixel sprites (player in sunglasses + cap with idle/run/jump poses and squash, 2-frame glitch bugs), layered parallax (stars, synthwave sun, Miami skyline with lit windows, dotted hills, palms), tiled ground and brick platforms, goal posts with a moving tape, checkpoint gates, particles, screen shake, scanlines.
+
+### DX Lab — lab room, crew characters, Neural Typer, SFX (Smilingtimes + Devin)
+- Level select is now an illustrated DX Lab room (generated pixel art, `room.webp`) with clickable glowing stations: Sort Lab, Data Dash, Neural Typer, plus a DEX dialog box.
+- The player's equipped crew character from `shared/crew.js` walks to the station you pick.
+- New level Neural Typer (`typer.js`): type falling AI terms, learn 15 definitions.
+- Synthesized WebAudio sound effects (`sfx.js`), with a mute toggle.
+- DX Lab now loads `shared/include.js`.

@@ -127,7 +127,7 @@ body { --accent: var(--dx-lab); }
 
 /* ---- Super Mario World–style pixel skin ---- */
 body {
-  background: linear-gradient(rgba(10,5,24,0.35), rgba(10,5,24,0.55)), url('bg.png') center bottom / cover no-repeat fixed, #0a0518;
+  background: linear-gradient(rgba(10,5,24,0.55), rgba(10,5,24,0.9)), url('dash-bg.webp') center top / cover no-repeat fixed, #0a0518;
   image-rendering: pixelated;
 }
 .top h1, .lv-name, .intro h2, .panel h2, .win h2 {
@@ -198,3 +198,51 @@ body {
 .touch button { border-radius: 0; border: 3px solid #0a0518; background: var(--sun); color: #0a0518;
                 box-shadow: inset -4px -4px 0 #c99a12, inset 4px 4px 0 #fff3b0, 3px 3px 0 #0a0518; }
 .big-tokens { text-shadow: 3px 3px 0 #0a0518, 0 0 12px var(--sun); }
+
+/* ---- Lab room (level select) ---- */
+.room { position: relative; width: 100%; max-width: 1120px; margin: 0 auto; aspect-ratio: 1536 / 1024; overflow: hidden;
+        border: 3px solid #0a0518; box-shadow: 0 0 0 3px #e9d8b4, 8px 8px 0 3px rgba(10,5,24,0.85); }
+.room-art { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: auto; }
+.chip-tag { position: absolute; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+            background: #f1e6cc; color: #1e2a33; border: 2px solid #1e2a33; padding: 6px 10px;
+            font-family: 'Press Start 2P', monospace; font-size: 10px; letter-spacing: 1px;
+            box-shadow: inset 0 0 0 2px #fff8e6, 3px 3px 0 rgba(10,5,24,0.7); pointer-events: none; }
+.room-chip { left: 1.5%; top: 2.5%; background: #1e2a33; color: #f1e6cc; border-color: #0a0518; box-shadow: inset 0 0 0 1px #3c5160, 3px 3px 0 rgba(10,5,24,0.7); }
+.room-chip i { width: 8px; height: 8px; background: #39ff88; display: inline-block; }
+.room-chip.right { left: auto; right: 1.5%; }
+.station { position: absolute; background: transparent; border: 3px solid transparent; cursor: pointer; padding: 0;
+           box-shadow: none; animation: glow 1.6s ease-in-out infinite; }
+.station:hover, .station:focus-visible { border-color: var(--sun); background: rgba(255,210,63,0.08); outline: none; transform: none;
+           box-shadow: 0 0 0 2px #0a0518, 0 0 24px rgba(255,210,63,0.65), inset 0 0 24px rgba(255,210,63,0.25); animation: none; }
+.station::before { display: none; }
+@keyframes glow { 0%,100% { box-shadow: inset 0 0 0 rgba(46,230,255,0); } 50% { box-shadow: inset 0 0 18px rgba(46,230,255,0.35), 0 0 12px rgba(46,230,255,0.25); } }
+.station-tag { padding: 5px 8px 5px 5px; transition: transform .12s; }
+.station-tag .st-n { background: #1e2a33; color: #f1e6cc; padding: 4px 6px; }
+.station-tag .lv-name { font-size: 11px; margin: 0; color: #1e2a33; text-shadow: none; }
+.station-tag .lv-tag { font-size: 8px; background: none; box-shadow: none; padding: 0 0 0 8px; color: #5a6b76; border-left: 2px solid #c9b993; }
+.station:hover + .station-tag, .station:focus-visible + .station-tag { transform: translateY(-4px); background: #fff3b0; }
+.hero { position: absolute; width: 8.5%; aspect-ratio: 168 / 376; transform: translate(-50%, -100%); pointer-events: none;
+        transition: left .5s linear, top .5s linear; filter: drop-shadow(0 6px 0 rgba(10,5,24,0.45)); image-rendering: auto; }
+.hero.flip { transform: translate(-50%, -100%) scaleX(-1); }
+.dialog { position: absolute; left: 1.5%; right: 44%; bottom: 2.5%; display: flex; gap: 14px; align-items: center;
+          background: rgba(30, 42, 51, 0.96); border: 2px solid #0a0518; box-shadow: inset 0 0 0 2px #e9d8b4, 4px 4px 0 rgba(10,5,24,0.7);
+          padding: 12px 16px; color: #f1e6cc; pointer-events: none; }
+.dlg-face { width: 72px; height: 72px; image-rendering: pixelated; border: 2px solid #e9d8b4; flex: none; }
+.dlg-body p { margin: 0; }
+.dlg-who { font-family: 'Press Start 2P', monospace; font-size: 9px; color: #8aa0ad; letter-spacing: 1px; margin-bottom: 8px !important; }
+.dlg-who b { color: var(--sun); font-weight: normal; margin-right: 10px; }
+.dlg-line { font-family: 'VT323', monospace; font-size: 24px; line-height: 1; color: #fff8e6; }
+.dlg-sub { font-family: 'VT323', monospace; font-size: 19px; color: #b9c7cf; margin-top: 4px !important; }
+.room-hint { text-align: center; color: #b9c7cf; font-size: 10px; margin: 14px 0 0; }
+@media (max-width: 760px) {
+  .room { overflow: visible; margin-bottom: 150px; }
+  .dialog { left: 0; right: 0; bottom: auto; top: calc(100% + 12px); }
+  .station-tag .lv-tag, .room-chip.right { display: none; }
+  .chip-tag { font-size: 8px; padding: 4px 6px; }
+}
+.dialog, .dlg-body { text-align: left; }
+@media (max-width: 760px) {
+  .room { margin-bottom: 190px; }
+  .station-tag { transform: scale(.9); transform-origin: left top; }
+  .room .station-tag:last-of-type { left: 58% !important; }
+}

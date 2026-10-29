@@ -217,29 +217,76 @@
   function setStep(t) { document.getElementById('step').textContent = t ? '· ' + t : ''; }
 
   // ---------- Intro ----------
+  var STATIONS = [
+    { n: 1, name: 'Sort Lab', tag: 'PUZZLE', box: [3, 44, 38, 34], label: [6, 37], walk: [33, 80],
+      text: 'Sort photos to train a model, fix a biased dataset, engineer prompts, then a quick quiz.', go: function () { round1(); } },
+    { n: 2, name: 'Data Dash', tag: 'PLATFORMER', box: [40.5, 14, 14.5, 40], label: [41, 7], walk: [47, 60],
+      text: 'Run Ocean Drive. Grab correctly labeled photos, skip bad data, stomp glitch bugs.', go: function () { window.DXDash.start(window.DXLab); } },
+    { n: 3, name: 'Neural Typer', tag: 'TYPING', box: [57, 36, 34, 33], label: [66, 29], walk: [63, 80],
+      text: 'AI words fall like meteors. Type them to blast them and learn what each one means.', go: function () { window.DXTyper.start(window.DXLab); } }
+  ];
+
   function intro() {
     setStep('');
     app.innerHTML = '';
-    var c = el('div', 'card intro');
-    c.innerHTML =
-      '<h2>Welcome to the DX Lab</h2>' +
-      '<p class="lead">Midnight on Ocean Drive. The lab\'s new AI can\'t tell a palm tree from a pink Cadillac. Your job: teach it. Pick a level:</p>' +
-      (AIVice.isComplete(GAME_ID) ? '<p class="tip">★ You already beat the DX Lab. Replay any level to practice.</p>' : '<p class="tip">Clear a level to earn 50 AI tokens.</p>');
-    var levels = el('div', 'levels');
-    var defs = [
-      { name: 'Sort Lab', tag: 'PUZZLE · 4 ROUNDS', text: 'Build a training set, fix a biased dataset, engineer the perfect prompt, then a quick quiz.', go: round1 },
-      { name: 'Data Dash', tag: 'PLATFORMER', text: 'Run and jump down Ocean Drive. Grab correctly labeled photos, skip bad data, stomp glitch bugs.', go: function () { window.DXDash.start(window.DXLab); } },
-      { name: 'Neural Typer', tag: 'TYPING', text: 'AI words fall like meteors over Ocean Drive. Type them to blast them and learn what each one means.', go: function () { window.DXTyper.start(window.DXLab); } }
-    ];
-    defs.forEach(function (d) {
-      var l = el('button', 'level card');
-      l.innerHTML = '<span class="pixel lv-tag">' + d.tag + '</span><span class="lv-name neon">' + d.name + '</span><span class="lv-text">' + d.text + '</span>';
-      l.onclick = d.go;
-      levels.appendChild(l);
+    var done = AIVice.isComplete(GAME_ID);
+    var room = el('div', 'room');
+    room.innerHTML = '<img class="room-art" src="room.webp" alt="The DX Lab at night: a photo-sorting table, an arcade cabinet and a retro computer">' +
+      '<div class="chip-tag room-chip"><i></i>DX LAB · AI FUNDAMENTALS</div>' +
+      '<div class="chip-tag room-chip right">' + (done ? '★ LAB CLEARED' : 'CLEAR A LEVEL · +50 TOKENS') + '</div>';
+
+    var hero = el('canvas', 'hero');
+    hero.width = 168; hero.height = 376;
+    var heroPos = [50, 84];
+    var ch = AIVice.getActiveCharacter();
+    function paintHero(which, i) {
+      if (window.AIViceCrew) AIViceCrew.drawInto(hero, ch.id, which, i);
+    }
+    function placeHero() { hero.style.left = heroPos[0] + '%'; hero.style.top = heroPos[1] + '%'; }
+    placeHero(); paintHero('back', 0);
+
+    var dlg = el('div', 'dialog');
+    dlg.innerHTML = '<img class="dlg-face" src="dex.webp" alt="">' +
+      '<div class="dlg-body"><p class="dlg-who"><b>DEX</b> LAB ASSISTANT</p>' +
+      '<p class="dlg-line"></p><p class="dlg-sub"></p></div>';
+    var line = dlg.querySelector('.dlg-line'), sub = dlg.querySelector('.dlg-sub');
+    function say(a, b) { line.textContent = a; sub.textContent = b; }
+    function idle() {
+      say('Hey ' + ch.name + '! My AI can\'t tell a palm tree from a pink Cadillac.',
+        'Pick a glowing station to teach it something.');
+    }
+    idle();
+
+    var busy = false;
+    STATIONS.forEach(function (d) {
+      var b = el('button', 'level station');
+      b.setAttribute('aria-label', d.name + ': ' + d.text);
+      b.style.left = d.box[0] + '%'; b.style.top = d.box[1] + '%';
+      b.style.width = d.box[2] + '%'; b.style.height = d.box[3] + '%';
+      var t = el('span', 'chip-tag station-tag');
+      t.innerHTML = '<span class="st-n">' + d.n + '</span><span class="lv-name">' + d.name + '</span><span class="lv-tag">' + d.tag + '</span>';
+      t.style.left = d.label[0] + '%'; t.style.top = d.label[1] + '%';
+      b.onmouseenter = b.onfocus = function () { say(d.name + ' · ' + d.tag, d.text); };
+      b.onmouseleave = b.onblur = idle;
+      b.onclick = function () {
+        if (busy) return;
+        busy = true;
+        if (window.DXSfx) window.DXSfx.play('key');
+        hero.classList.toggle('flip', d.walk[0] < heroPos[0]);
+        heroPos = d.walk; placeHero();
+        var f = 0, walker = setInterval(function () { paintHero(f % 2 ? 'front' : 'walk', f); f++; }, 120);
+        setTimeout(function () { clearInterval(walker); d.go(); }, 520);
+      };
+      room.appendChild(b);
+      room.appendChild(t);
     });
-    c.appendChild(levels);
-    app.appendChild(c);
+    room.appendChild(hero);
+    room.appendChild(dlg);
+    app.appendChild(room);
+    var hint = el('p', 'pixel room-hint', '⌘ CLICK A GLOWING STATION TO PLAY');
+    app.appendChild(hint);
   }
+
 
   // ---------- Shared training-lab UI ----------
   // cfg: { title, text, pool, train, tests, goal, minTrain, showBalance, insight, next }
