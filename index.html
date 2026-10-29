@@ -31,8 +31,9 @@
       padding: 0;
     }
     .hotspot:hover, .hotspot:focus-visible {
-      outline: 2px dashed var(--aqua);
+      outline: 2px solid var(--accent, var(--aqua));
       outline-offset: 2px;
+      box-shadow: 0 0 18px var(--accent, var(--aqua)), inset 0 0 14px rgba(46,230,255,.25);
     }
     .hotspot .tag {
       position: absolute; left: 50%; bottom: -6px;
@@ -353,16 +354,16 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
   <script src="shared/music.js"></script>
   <script>
-    var MAP_W = 960, MAP_H = 540;
+    var MAP_W = 1344, MAP_H = 752;
     var REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     // % of map image: x,y = top-left of the building, w,h = its size. Tune freely.
     var HOTSPOTS = {
-      'ai-center':    { label: 'AI Center',       x: 44, y: 33, w: 16, h: 18, accent: 'var(--pink)'   },
-      'python-lab':   { label: 'Programming Lab', x: 24, y: 11, w: 12, h: 14, accent: 'var(--aqua)'   },
-      'robotics':     { label: 'Robotics',        x: 32, y: 53, w: 12, h: 14, accent: 'var(--sunset)' },
-      'matrix-motel': { label: 'Matrix Motel',    x: 76, y: 24, w: 12, h: 16, accent: 'var(--pink)'   },
-      'dx-lab':       { label: 'DX Lab',          x: 71, y: 74, w: 14, h: 12, accent: 'var(--sun)'    }
+      'ai-center':    { label: 'AI Center',       x: 28, y: 23, w: 14, h: 26, accent: 'var(--pink)'   },
+      'python-lab':   { label: 'Programming Lab', x: 28, y: 6,  w: 17, h: 17, accent: 'var(--aqua)'   },
+      'robotics':     { label: 'Robotics',        x: 18, y: 63, w: 13, h: 20, accent: 'var(--sunset)' },
+      'matrix-motel': { label: 'Matrix Motel',    x: 68, y: 30, w: 13, h: 16, accent: 'var(--pink)'   },
+      'dx-lab':       { label: 'DX Lab',          x: 72, y: 70, w: 14, h: 19, accent: 'var(--sun)'    }
     };
 
     var map = document.getElementById('map');
@@ -374,7 +375,7 @@
     var busy = false;
 
     function fit() {
-      var s = Math.max(innerWidth / MAP_W, innerHeight / MAP_H);
+      var s = Math.min(innerWidth / MAP_W, innerHeight / MAP_H);
       map.style.width = MAP_W * s + 'px';
       map.style.height = MAP_H * s + 'px';
       map.style.left = (innerWidth - MAP_W * s) / 2 + 'px';

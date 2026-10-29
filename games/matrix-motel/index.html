@@ -5,15 +5,49 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Matrix Motel — AI Vice</title>
   <link rel="stylesheet" href="../../shared/theme.css">
-  <style>body { --accent: var(--matrix-motel); }</style>
+  <style>
+    body { --accent: var(--matrix-motel); }
+    #room {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--night);
+    }
+    #room img { max-width: 100%; max-height: 100%; image-rendering: pixelated; object-fit: contain; }
+    .dialog {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+      width: min(680px, calc(100% - 32px));
+      display: flex; gap: 16px; align-items: flex-start; text-align: left;
+      --accent: var(--matrix-motel);
+    }
+    #dlg-portrait { image-rendering: pixelated; flex: none; }
+    .dlg-name { color: var(--sun); margin-bottom: 6px; }
+    .dlg-text { min-height: 54px; font-size: 26px; }
+    .dlg-arrow { position: absolute; right: 14px; bottom: 8px; color: var(--sun); animation: blink 0.8s steps(2) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    #back { position: fixed; top: 14px; left: 14px; }
+  </style>
 </head>
 <body>
-  <div class="screen">
-    <h1 class="neon">Matrix Motel</h1>
-    <p class="pixel">RED TEAMING</p>
-    <p>Game under construction — check back soon.</p>
-    <button class="btn" onclick="AIVice.backToHub()">Back to AI Center</button>
+  <div id="room"><img src="room.png" alt="Matrix Motel lobby"></div>
+  <button id="back" class="btn ghost" onclick="AIVice.backToHub()">Back to AI Center</button>
+  <div class="dialog card">
+    <canvas id="dlg-portrait" width="60" height="50"></canvas>
+    <div>
+      <div class="dlg-name pixel">CONCIERGE.EXE</div>
+      <div class="dlg-text" id="dlg-text"></div>
+    </div>
+    <div class="dlg-arrow">&#9660;</div>
   </div>
   <script src="../../shared/wallet.js"></script>
+  <script src="../../shared/sprite.js"></script>
+  <script>
+    var txt = 'Welcome to the Matrix Motel, ' + (AIVice.getPlayer().name || 'traveler') +
+      '. Four rooms, four assistants, four weaknesses. We are still checking guests in — come back soon.';
+    var el = document.getElementById('dlg-text'), i = 0;
+    var pc = document.getElementById('dlg-portrait').getContext('2d');
+    AIViceSprite.draw(pc, { body: '#ffb3e1', accent: '#ff2fb3' }, 0, 0, 0, 5);
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) el.textContent = txt;
+    else var t = setInterval(function () { el.textContent = txt.slice(0, ++i); if (i >= txt.length) clearInterval(t); }, 28);
+  </script>
 </body>
 </html>
