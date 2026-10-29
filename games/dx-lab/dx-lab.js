@@ -228,7 +228,8 @@
     var levels = el('div', 'levels');
     var defs = [
       { name: 'Sort Lab', tag: 'PUZZLE · 4 ROUNDS', text: 'Build a training set, fix a biased dataset, engineer the perfect prompt, then a quick quiz.', go: round1 },
-      { name: 'Data Dash', tag: 'PLATFORMER', text: 'Run and jump down Ocean Drive. Grab correctly labeled photos, skip bad data, stomp glitch bugs.', go: function () { window.DXDash.start(window.DXLab); } }
+      { name: 'Data Dash', tag: 'PLATFORMER', text: 'Run and jump down Ocean Drive. Grab correctly labeled photos, skip bad data, stomp glitch bugs.', go: function () { window.DXDash.start(window.DXLab); } },
+      { name: 'Neural Typer', tag: 'TYPING', text: 'AI words fall like meteors over Ocean Drive. Type them to blast them and learn what each one means.', go: function () { window.DXTyper.start(window.DXLab); } }
     ];
     defs.forEach(function (d) {
       var l = el('button', 'level card');

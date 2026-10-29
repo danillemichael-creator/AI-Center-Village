@@ -124,3 +124,77 @@ body { --accent: var(--dx-lab); }
 .pl-prompt { font-family: 'VT323', monospace; font-size: 22px; color: var(--sun); white-space: pre-wrap; margin: 12px 0; padding: 8px 10px;
              background: rgba(0,0,0,0.35); border-left: 3px solid var(--sun); }
 .level:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+/* ---- Super Mario World–style pixel skin ---- */
+body {
+  background: linear-gradient(rgba(10,5,24,0.35), rgba(10,5,24,0.55)), url('bg.png') center bottom / cover no-repeat fixed, #0a0518;
+  image-rendering: pixelated;
+}
+.top h1, .lv-name, .intro h2, .panel h2, .win h2 {
+  font-family: 'Press Start 2P', monospace; font-weight: normal; color: var(--sun);
+  text-shadow: 3px 0 #0a0518, -3px 0 #0a0518, 0 3px #0a0518, 0 -3px #0a0518, 3px 3px #0a0518, -3px -3px #0a0518, 3px -3px #0a0518, -3px 3px #0a0518, 6px 6px 0 var(--pink);
+}
+.top h1 { font-size: 38px; letter-spacing: 2px; }
+.intro h2, .panel h2 { font-size: 20px; line-height: 1.4; margin-bottom: 12px; }
+.win h2 { font-size: 26px; line-height: 1.4; }
+.lv-name { font-size: 20px; margin: 4px 0; }
+.insight h3 { font-family: 'Press Start 2P', monospace; font-size: 14px; line-height: 1.4; }
+.hud { background: #0a0518; padding: 10px 14px; border: 3px solid #0a0518; box-shadow: inset 0 0 0 3px var(--sun), 4px 4px 0 rgba(10,5,24,0.8); }
+.hud::before { content: ''; display: inline-block; width: 10px; height: 14px; margin-right: 8px; vertical-align: -2px; background: var(--sun);
+               box-shadow: inset -3px 0 #c99a12, inset 3px 0 #fff3b0, 0 0 0 2px #0a0518; border-radius: 40%; }
+
+.card {
+  background: rgba(16, 8, 40, 0.94); border: 3px solid #0a0518; border-radius: 0; padding: 24px;
+  box-shadow: inset 0 0 0 3px var(--sun), inset 0 0 0 6px #0a0518, 6px 6px 0 rgba(10,5,24,0.85);
+}
+.insight { box-shadow: inset 0 0 0 3px #39ff88, inset 0 0 0 6px #0a0518, 6px 6px 0 rgba(10,5,24,0.85); }
+
+.btn {
+  border-radius: 0; background: var(--sun); color: #0a0518; border: 3px solid #0a0518; filter: none;
+  box-shadow: inset -4px -4px 0 #c99a12, inset 4px 4px 0 #fff3b0, 4px 4px 0 #0a0518; transition: transform .05s;
+}
+.btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.btn:active { transform: translate(3px, 3px); box-shadow: inset -4px -4px 0 #c99a12, inset 4px 4px 0 #fff3b0, 1px 1px 0 #0a0518; }
+.btn.ghost { background: #2b1140; color: var(--sun); border: 3px solid #0a0518;
+             box-shadow: inset -4px -4px 0 #1b0b33, inset 4px 4px 0 #4a2370, 4px 4px 0 #0a0518; }
+.btn:disabled { opacity: .45; transform: none; }
+
+.level { position: relative; padding-left: 28px; }
+.level::before { content: '▶'; position: absolute; left: 10px; top: 24px; color: var(--sun); font-size: 14px; opacity: 0; }
+.level:hover { background: rgba(43, 17, 64, 0.97); transform: translateY(-4px); }
+.level:hover::before { opacity: 1; animation: blink .6s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.lv-tag { display: inline-block; align-self: flex-start; background: #0a0518; padding: 5px 7px; box-shadow: inset 0 0 0 2px var(--aqua); }
+
+.zone { border-radius: 0; border: 3px dashed rgba(255, 210, 63, 0.55); background: rgba(10,5,24,0.45); }
+.item { border-radius: 0; background: #1b0b33; border: 3px solid #0a0518; box-shadow: inset 0 0 0 2px #3d1a63, 3px 3px 0 #0a0518; }
+.item:hover { border-color: #0a0518; box-shadow: inset 0 0 0 2px var(--sun), 3px 3px 0 #0a0518; transform: translateY(-2px); }
+.item.sel { border-color: #0a0518; box-shadow: inset 0 0 0 3px var(--sun), 0 0 0 2px var(--sun), 3px 3px 0 #0a0518; }
+.item canvas, .test canvas { border-radius: 0; }
+.item .tag { border-radius: 0; }
+.test canvas { border-width: 3px; }
+
+.meter { border-radius: 0; border: 3px solid #0a0518; box-shadow: inset 0 0 0 2px var(--sun); background: #0a0518; }
+.meter .fill { box-shadow: none;
+  background: repeating-linear-gradient(90deg, transparent 0 14px, #0a0518 14px 17px), linear-gradient(90deg, var(--pink), var(--sunset), var(--sun)); }
+
+.balance th, .balance td { border: 2px solid #0a0518; background: rgba(43,17,64,0.6); }
+
+.opt { border-radius: 0; position: relative; padding-left: 36px; background: #1b0b33; border: 3px solid #0a0518;
+       box-shadow: inset 0 0 0 2px #3d1a63, 3px 3px 0 #0a0518; }
+.opt:hover:not(:disabled) { border-color: #0a0518; background: #2b1140; box-shadow: inset 0 0 0 2px var(--sun), 3px 3px 0 #0a0518; }
+.opt:hover:not(:disabled)::before { content: '▶'; position: absolute; left: 12px; color: var(--sun); animation: blink .6s steps(2) infinite; }
+.opt.right { border-color: #0a0518; box-shadow: inset 0 0 0 3px #39ff88, 3px 3px 0 #0a0518; }
+.opt.wrong { border-color: #0a0518; box-shadow: inset 0 0 0 3px var(--pink), 3px 3px 0 #0a0518; }
+
+.chip { border-radius: 0; background: #1b0b33; border: 3px solid #0a0518; box-shadow: inset 0 0 0 2px #3d1a63, 3px 3px 0 #0a0518; }
+.chip:hover { border-color: #0a0518; box-shadow: inset 0 0 0 2px var(--sun), 3px 3px 0 #0a0518; }
+.chip.on { background: var(--sun); color: #0a0518; border-color: #0a0518; box-shadow: inset -3px -3px 0 #c99a12, inset 3px 3px 0 #fff3b0, 3px 3px 0 #0a0518; }
+.pl-out, .pl-prompt { border-radius: 0; background: #0a0518; }
+.pl-out { border: 3px solid #3d1a63; }
+.pl-out.match { border-color: #39ff88; box-shadow: none; }
+
+#dash { border-radius: 0; border: 3px solid #0a0518; box-shadow: 0 0 0 3px var(--sun), 6px 6px 0 3px rgba(10,5,24,0.85); }
+.touch button { border-radius: 0; border: 3px solid #0a0518; background: var(--sun); color: #0a0518;
+                box-shadow: inset -4px -4px 0 #c99a12, inset 4px 4px 0 #fff3b0, 3px 3px 0 #0a0518; }
+.big-tokens { text-shadow: 3px 3px 0 #0a0518, 0 0 12px var(--sun); }

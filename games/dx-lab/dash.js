@@ -34,7 +34,19 @@
     var wrap = el('div', 'card dash-wrap');
     var hud = el('div', 'dash-hud pixel');
     var hudPhotos = el('span', '', 'PHOTOS: 0'), hudHint = el('span', '', 'GRAB RIGHT LABELS · SKIP WRONG ONES'), hudBugs = el('span', '', 'BUGS: 0');
-    hud.appendChild(hudPhotos); hud.appendChild(hudHint); hud.appendChild(hudBugs);
+    var hudMute = el('span', '', '');
+    hudMute.setAttribute('role', 'button'); hudMute.setAttribute('tabindex', '0'); hudMute.setAttribute('aria-label', 'Toggle sound');
+    hudMute.style.cursor = 'pointer';
+    function updateMute() { hudMute.textContent = window.DXSfx && window.DXSfx.muted() ? '♪ OFF' : '♪ ON'; }
+    function toggleMute(e) {
+      if (e) e.preventDefault();
+      if (window.DXSfx) window.DXSfx.toggle();
+      updateMute();
+    }
+    hudMute.addEventListener('click', toggleMute);
+    hudMute.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') toggleMute(e); });
+    hud.appendChild(hudPhotos); hud.appendChild(hudHint); hud.appendChild(hudBugs); hud.appendChild(hudMute);
+    updateMute();
     var canvas = el('canvas'); canvas.id = 'dash'; canvas.width = W; canvas.height = H;
     var help = el('p', 'dash-help', 'Arrows / WASD to run, Space / W / ↑ to jump. Stomp glitch bugs. Fall or get bugged and you respawn at the last checkpoint. Reach the flag to train your model on everything you grabbed.');
     var touch = el('div', 'touch');
@@ -88,6 +100,7 @@
     }
     function respawn() {
       hits++; flash = 0.4; shake = 0.25; burst(pl.x + 12, pl.y + 16, 16, ['#ff2fb3', '#2ee6ff', '#eaf6ff'], 260);
+      if (window.DXSfx) window.DXSfx.play('hurt');
       pl.x = CHECKPOINTS[cp]; pl.y = GROUND - pl.h; pl.vx = 0; pl.vy = 0; pl.invuln = 1;
       toast('GLITCHED! BACK TO CHECKPOINT', pl.x, pl.y - 30, '#ff2fb3');
     }
@@ -100,7 +113,7 @@
       t += dt;
       pl.vx = (keys.right ? SPEED : 0) - (keys.left ? SPEED : 0);
       if (pl.vx) pl.face = pl.vx > 0 ? 1 : -1;
-      if (keys.jump && !jumpHeld && pl.onGround) { pl.vy = -JUMP; pl.onGround = false; }
+      if (keys.jump && !jumpHeld && pl.onGround) { pl.vy = -JUMP; pl.onGround = false; if (window.DXSfx) window.DXSfx.play('jump'); }
       jumpHeld = keys.jump;
       if (!keys.jump && pl.vy < -260) pl.vy = -260; // short hop when released early
       pl.vy += GRAV * dt;
@@ -121,12 +134,12 @@
       particles.forEach(function (q) { q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 600 * dt; q.life -= dt; });
       particles = particles.filter(function (q) { return q.life > 0; });
       if (pl.y > H + 40) { respawn(); return; }
-      for (var i = CHECKPOINTS.length - 1; i > cp; i--) if (pl.x >= CHECKPOINTS[i]) { cp = i; toast('CHECKPOINT', CHECKPOINTS[i], GROUND - 90, '#2ee6ff'); break; }
+      for (var i = CHECKPOINTS.length - 1; i > cp; i--) if (pl.x >= CHECKPOINTS[i]) { cp = i; toast('CHECKPOINT', CHECKPOINTS[i], GROUND - 90, '#2ee6ff'); if (window.DXSfx) window.DXSfx.play('checkpoint'); break; }
 
       pickups.forEach(function (p) {
         if (p.taken) return;
         if (pl.x + pl.w > p.x && pl.x < p.x + 40 && pl.y + pl.h > p.y && pl.y < p.y + 48) {
-          p.taken = true; haul.push(p); burst(p.x + 20, p.y + 24, 14, ['#ffd23f', '#eaf6ff', '#39ff88'], 220);
+          p.taken = true; haul.push(p); burst(p.x + 20, p.y + 24, 14, ['#ffd23f', '#eaf6ff', '#39ff88'], 220); if (window.DXSfx) window.DXSfx.play('coin');
           toast('+1 ' + (p.tag === 'palm' ? 'PALM' : 'NOT PALM'), p.x, p.y - 10, '#ffd23f');
         }
       });
@@ -138,7 +151,7 @@
         var by = GROUND - 22;
         if (pl.x + pl.w > b.x && pl.x < b.x + 28 && pl.y + pl.h > by && pl.y < by + 22) {
           if (pl.vy > 0 && prevBottom <= by + 12) {
-            b.alive = false; b.squash = 0.5; stomped++; pl.vy = -480; shake = 0.15; burst(b.x + 14, by + 10, 14, ['#ff2fb3', '#2ee6ff', '#39ff88'], 240);
+            b.alive = false; b.squash = 0.5; stomped++; pl.vy = -480; shake = 0.15; burst(b.x + 14, by + 10, 14, ['#ff2fb3', '#2ee6ff', '#39ff88'], 240); if (window.DXSfx) window.DXSfx.play('stomp');
             toast('BUG SQUASHED', b.x, by - 20, '#39ff88');
           } else if (!pl.invuln) respawn();
         }
@@ -149,7 +162,7 @@
       camX = Math.max(0, Math.min(WORLD - W, pl.x - W * 0.35));
       hudPhotos.textContent = 'PHOTOS: ' + haul.length;
       hudBugs.textContent = 'BUGS: ' + stomped;
-      if (pl.x >= FLAG) { stop(); setTimeout(results, 350); }
+      if (pl.x >= FLAG) { if (window.DXSfx) window.DXSfx.play('goal'); stop(); setTimeout(results, 350); }
     }
 
     // ---------- pixel art (Super Mario World-style: outlined, shaded, layered parallax) ----------
