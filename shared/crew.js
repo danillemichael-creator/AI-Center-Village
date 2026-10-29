@@ -2,12 +2,17 @@ window.AIViceCrew = (function () {
   // Sheet layout, left to right: portrait | front | back | walk strip (N frames).
   // Tune crops here; add per-member fixes under overrides.
   var CROP = {
-    portrait: { x: 0,   y: 0, w: 128, h: 128 },
-    front:    { x: 128, y: 0, w: 64,  h: 128 },
-    back:     { x: 192, y: 0, w: 64,  h: 128 },
-    walk:     { x: 256, y: 0, w: 128, h: 128, frames: 2 },
+    portrait: { x: 0,    y: 0, w: 336, h: 752 },
+    front:    { x: 336,  y: 0, w: 336, h: 752 },
+    back:     { x: 672,  y: 0, w: 336, h: 752 },
+    walk:     { x: 1008, y: 0, w: 336, h: 752, frames: 1 },
     overrides: {
-      // jay: { walk: { x: 256, y: 0, w: 192, frames: 3 } }
+      rookie: {
+        portrait: { x: 0,   y: 0, w: 128, h: 128 },
+        front:    { x: 128, y: 0, w: 64,  h: 128 },
+        back:     { x: 192, y: 0, w: 64,  h: 128 },
+        walk:     { x: 256, y: 0, w: 128, h: 128, frames: 2 }
+      }
     }
   };
 
