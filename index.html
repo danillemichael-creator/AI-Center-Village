@@ -108,6 +108,13 @@
       content: '\25B8'; position: absolute; left: 8px;
       color: var(--pink); animation: blink 0.8s steps(2) infinite;
     }
+    #press-start {
+      color: var(--aqua); margin-top: 60px;
+      animation: blink 0.9s steps(2) infinite;
+    }
+    #scr-title #menu { opacity: 0; pointer-events: none; transition: opacity .4s; }
+    #scr-title.ready #menu { opacity: 1; pointer-events: auto; }
+    #scr-title.ready #press-start { display: none; }
 
     .scr .card { max-width: 480px; width: calc(100% - 32px); text-align: center; padding: 28px; }
     .scr input {
@@ -280,6 +287,7 @@
         <li data-act="board">LEADERBOARD</li>
         <li data-act="settings">SETTINGS</li>
       </ul>
+      <div id="press-start" class="pixel">PRESS START</div>
     </div>
 
     <div id="scr-signup" class="scr">
@@ -521,6 +529,7 @@
       clearInterval(boardTimer);
       boardTimer = setInterval(renderBoard, 10000);
       overlay.classList.add('open');
+      if (AIVice.music && AIVice.music.brighten) AIVice.music.brighten(true);
       var p = AIVice.getPlayer();
       captainSays('Welcome to the AI Center' + (p.name ? ', ' + p.name : '') +
         '. Spend those tokens wisely — the leaderboard is watching.');
@@ -530,7 +539,7 @@
       overlay.classList.remove('open');
       clearInterval(boardTimer);
       clearInterval(dlgTimer);
-      if (AIVice.music) AIVice.music.play('hub');
+      if (AIVice.music) { AIVice.music.play('hub'); AIVice.music.brighten(false); }
       map.style.transform = 'scale(1)';
       resetActors();
       busy = false;
@@ -725,8 +734,11 @@
       li.addEventListener('click', function () { selectMenu(i); menuAction(li.dataset.act); });
       li.addEventListener('mouseenter', function () { selectMenu(i); });
     });
+    var titleScr = document.getElementById('scr-title');
+    titleScr.addEventListener('pointerdown', function () { titleScr.classList.add('ready'); });
     document.addEventListener('keydown', function (e) {
-      if (!document.getElementById('scr-title').classList.contains('on')) return;
+      if (!titleScr.classList.contains('on')) return;
+      if (!titleScr.classList.contains('ready')) { titleScr.classList.add('ready'); return; }
       if (e.key === 'ArrowUp') { selectMenu(menuIdx - 1); e.preventDefault(); }
       else if (e.key === 'ArrowDown') { selectMenu(menuIdx + 1); e.preventDefault(); }
       else if (e.key === 'Enter') menuAction(menuItems[menuIdx].dataset.act);
@@ -874,6 +886,7 @@
       toast('WELCOME BACK, ' + AIVice.getPlayer().name.toUpperCase());
     } else {
       showScreen('scr-title');
+      if (AIVice.music) AIVice.music.play('title');
     }
 
     refreshHud();

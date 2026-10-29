@@ -15,6 +15,8 @@
     return '<script src="' + src + '"><\/script>';
   });
   out.push('<script>(function(){window.AIVice=window.AIVice||{};window.AIVice.ready=true;' +
+    'var m=location.pathname.match(/\\/games\\/([^/]+)\\//);' +
+    'if(AIVice.music)AIVice.music.play(m?"challenge":"title",m&&m[1]);' +
     'setTimeout(function(){document.dispatchEvent(new CustomEvent("aivice:ready"));},0);})();<\/script>');
   document.write(out.join('\n'));
 })();
