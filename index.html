@@ -78,6 +78,30 @@
       padding: 8px 18px;
       z-index: 20;
     }
+    #hud .who { display: flex; align-items: center; gap: 8px; color: var(--aqua); }
+    #hud-sprite { image-rendering: pixelated; }
+    .mute-btn {
+      background: none; border: none; color: var(--aqua);
+      font: inherit; cursor: pointer; padding: 0 4px; font-size: 14px;
+    }
+    .mute-btn.off { color: #5a5080; }
+
+    #player-modal {
+      position: fixed; inset: 0; display: none;
+      background: rgba(10, 5, 24, 0.92);
+      z-index: 40;
+      align-items: center; justify-content: center;
+    }
+    #player-modal.open { display: flex; }
+    #player-modal .card { max-width: 440px; text-align: center; padding: 32px; }
+    #player-modal input {
+      display: block; width: 100%; margin: 12px 0;
+      font-family: 'VT323', monospace; font-size: 26px; text-align: center;
+      background: var(--night); color: var(--aqua);
+      border: 2px solid var(--aqua); border-radius: 4px; padding: 8px;
+    }
+    #player-modal input::placeholder { color: #5a5080; }
+    #player-modal .hint { color: #8a7fb0; font-size: 18px; margin: 0 0 12px; }
 
     #overlay {
       position: fixed; inset: 0;
@@ -112,8 +136,10 @@
 <body>
   <div id="hud" class="pixel">
     <span style="color:var(--pink)">AI VICE</span>
+    <span class="who"><canvas id="hud-sprite" width="24" height="20"></canvas><b id="hud-name"></b></span>
     <span>TOKENS <b id="hud-tokens" style="color:var(--sun)">0</b></span>
     <span>DONE <b id="hud-done" style="color:var(--aqua)">0/4</b></span>
+    <button id="mute" class="mute-btn" aria-label="Toggle sound">&#9834;</button>
   </div>
 
   <div id="stage">
@@ -136,6 +162,17 @@
         <h3 class="neon" style="--accent:var(--aqua);margin-top:0">LEADERBOARD</h3>
         <table id="board" style="margin:0 auto"></table>
       </div>
+    </div>
+  </div>
+
+  <div id="player-modal">
+    <div class="card" style="--accent:var(--pink)">
+      <h2 class="neon" style="margin-top:0">WELCOME TO OCEAN DRIVE</h2>
+      <p>What's your name, hotshot?</p>
+      <input id="pname" maxlength="24" placeholder="NICKNAME" autocomplete="off">
+      <input id="pcrew" maxlength="24" placeholder="CREW CODE (OPTIONAL)" autocomplete="off">
+      <p class="hint">Friends who enter the same code share a board.</p>
+      <button class="btn" id="pgo">HIT THE STRIP</button>
     </div>
   </div>
 
@@ -182,10 +219,45 @@
     function refreshHud() {
       document.getElementById('hud-tokens').textContent = AIVice.getTokens();
       document.getElementById('hud-done').textContent = AIVice.getCompleted().length + '/4';
+      document.getElementById('hud-name').textContent = AIVice.getPlayer().name || 'ANON';
+      var hc = document.getElementById('hud-sprite').getContext('2d');
+      hc.clearRect(0, 0, 24, 20);
+      AIViceSprite.draw(hc, AIVice.getActiveCharacter().colors, 0, 0, 0, 2);
       document.querySelectorAll('.hotspot').forEach(function (el) {
         el.classList.toggle('done', AIVice.isComplete(el.dataset.id));
       });
+      updateMuteBtn();
     }
+
+    var muteBtn = document.getElementById('mute');
+    function updateMuteBtn() {
+      var m = AIVice.isMuted();
+      muteBtn.classList.toggle('off', m);
+      muteBtn.innerHTML = m ? '&#9835;&#x0338;' : '&#9834;';
+      muteBtn.setAttribute('aria-pressed', m ? 'true' : 'false');
+    }
+    muteBtn.addEventListener('click', function () {
+      if (AIVice.music && AIVice.music.toggle) AIVice.music.toggle();
+      else AIVice.setMuted(!AIVice.isMuted());
+      updateMuteBtn();
+    });
+
+    var playerModal = document.getElementById('player-modal');
+    if (!AIVice.getPlayer().name) {
+      playerModal.classList.add('open');
+      setTimeout(function () { document.getElementById('pname').focus(); }, 50);
+    }
+    function submitPlayer() {
+      var name = document.getElementById('pname').value.trim();
+      if (!name) { document.getElementById('pname').focus(); return; }
+      AIVice.setPlayer(name, document.getElementById('pcrew').value.trim());
+      playerModal.classList.remove('open');
+      refreshHud();
+    }
+    document.getElementById('pgo').addEventListener('click', submitPlayer);
+    playerModal.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') submitPlayer();
+    });
 
     Object.keys(HOTSPOTS).forEach(function (id) {
       var h = HOTSPOTS[id];
