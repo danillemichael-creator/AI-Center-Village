@@ -7,73 +7,202 @@
   <link rel="stylesheet" href="../../shared/theme.css">
   <style>
     body { --accent: var(--python-lab); }
-    .screen { padding-top: 16px; }
-    #status { color: var(--sun); margin: 6px 0 8px; }
-    #status.ready { color: var(--aqua); }
-    canvas {
-      display: block; margin: 0 auto; width: 100%; max-width: 608px;
-      image-rendering: pixelated; border: 3px solid #000;
-      box-shadow: 0 0 0 2px var(--aqua), 0 0 22px rgba(46, 230, 255, 0.45); background: #000;
+    .screen { max-width: 1100px; padding-top: 18px; }
+    .topbar { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 10px 0 6px; }
+    .pill { padding: 8px 14px; border-radius: 999px; background: rgba(10, 5, 24, 0.8); border: 2px solid rgba(255,255,255,0.15); }
+    #status { color: var(--sun); }
+    #status.ready { color: var(--aqua); border-color: rgba(46,230,255,0.5); }
+    .lead { font-size: 26px; margin: 6px 0 18px; }
+    .lead b { color: var(--sun); font-weight: normal; }
+
+    /* ---------- the street ---------- */
+    .street {
+      position: relative; border-radius: 22px; padding: 34px 18px 0; overflow: hidden;
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(255, 210, 63, 0.10), transparent 60%),
+        linear-gradient(180deg, #3b1a5c 0%, #2a1145 60%, #1d0b33 100%);
+      box-shadow: inset 0 0 0 3px rgba(255,255,255,0.06), 0 24px 60px rgba(0,0,0,0.55);
     }
-    .help { font-size: 20px; opacity: 0.85; margin: 10px 0; }
-    .overlay {
-      display: none; position: fixed; inset: 0; z-index: 10;
-      background: rgba(10, 5, 24, 0.9); padding: 24px 12px; overflow: auto;
+    .street::before { /* faint stucco texture */
+      content: ''; position: absolute; inset: 0; opacity: 0.25; pointer-events: none;
+      background-image: radial-gradient(rgba(255,255,255,0.10) 1px, transparent 1.5px);
+      background-size: 14px 14px;
     }
-    .overlay.open { display: block; }
-    .terminal { max-width: 720px; margin: 0 auto; text-align: left; }
-    .terminal h2 { margin: 0 0 6px; font-size: 32px; }
-    .task { font-size: 22px; margin: 8px 0 12px; }
-    textarea {
-      width: 100%; height: 190px; resize: vertical; padding: 10px;
-      background: #05020d; color: var(--aqua); border: 2px solid var(--plum);
+    .doors { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .sidewalk {
+      position: relative; height: 46px; margin: 0 -18px; margin-top: -6px;
+      background: linear-gradient(180deg, #8e7f96 0%, #5e5170 40%, #3a2f4a 100%);
+      box-shadow: inset 0 4px 0 rgba(255,255,255,0.18);
+    }
+    .sidewalk::after { content: ''; position: absolute; left: 0; right: 0; top: 22px; height: 2px;
+      background: repeating-linear-gradient(90deg, rgba(0,0,0,0.25) 0 2px, transparent 2px 120px); }
+
+    /* ---------- one door ---------- */
+    .door-card {
+      --c1: #6ff3ff; --c2: #16a7c9; --c3: #0b5266;
+      position: relative; display: flex; flex-direction: column; align-items: center;
+      padding-bottom: 6px; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+      transition: transform 0.25s ease;
+    }
+    .door-card:hover:not(.locked) { transform: translateY(-6px); }
+    .door-card:focus-visible { outline: 3px dashed var(--sun); outline-offset: 6px; border-radius: 16px; }
+
+    .sign {
+      position: relative; z-index: 2; margin-bottom: 18px; padding: 8px 14px 6px; border-radius: 14px;
+      background: linear-gradient(180deg, #241038, #12061f);
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.08), 0 8px 18px rgba(0,0,0,0.5);
+      text-align: center; min-width: 150px;
+    }
+    .sign .code { display: block; font-family: 'Courier New', monospace; font-weight: bold; font-size: 26px;
+      color: var(--c1); text-shadow: 0 0 6px var(--c1), 0 0 16px var(--c1); }
+    .sign .label { font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: 1px; color: #fff; opacity: 0.85; }
+    .locked .sign .code { color: #6b5f78; text-shadow: none; }
+
+    .lamp { position: absolute; top: 92px; right: calc(50% - 112px); z-index: 2; width: 18px; height: 26px;
+      border-radius: 8px 8px 4px 4px; background: linear-gradient(180deg, #ffe9a8, #ffb347);
+      box-shadow: 0 0 0 3px #3b2a22, 0 0 18px 6px rgba(255, 196, 92, 0.55), 0 0 60px 18px rgba(255, 196, 92, 0.18); }
+    .locked .lamp { background: #4b3a55; box-shadow: 0 0 0 3px #3b2a22; }
+
+    .doorway {
+      position: relative; width: 156px; height: 236px; border-radius: 78px 78px 8px 8px;
+      background: radial-gradient(ellipse at 50% 75%, #fff7d6 0%, #ffd26b 30%, #e0782f 65%, #5a2312 100%);
+      box-shadow:
+        0 0 0 11px #f4e7d6, 0 0 0 14px #c9b49c, 0 0 0 17px rgba(0,0,0,0.25),
+        0 22px 34px rgba(0,0,0,0.55);
+      perspective: 700px;
+    }
+    .doorway::before { /* keystone */
+      content: ''; position: absolute; top: -16px; left: 50%; width: 26px; height: 22px; transform: translateX(-50%);
+      border-radius: 6px; background: linear-gradient(180deg, #fff6e8, #d9c4aa); box-shadow: 0 3px 6px rgba(0,0,0,0.3); z-index: 1;
+    }
+    .leaf {
+      position: absolute; inset: 0; border-radius: 78px 78px 8px 8px;
+      background: linear-gradient(160deg, var(--c1) 0%, var(--c2) 48%, var(--c3) 100%);
+      box-shadow: inset 0 4px 0 rgba(255,255,255,0.45), inset 0 -16px 24px rgba(0,0,0,0.35),
+        inset 10px 0 18px rgba(255,255,255,0.10), inset -10px 0 18px rgba(0,0,0,0.25);
+      transform-origin: 6% 50%; transition: transform 0.75s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.3s;
+    }
+    .door-card:hover:not(.locked):not(.cleared) .leaf { transform: rotateY(-14deg); }
+    .door-card.opening .leaf { transform: rotateY(-80deg) !important; }
+    .door-card.cleared .leaf { transform: rotateY(-28deg); }
+    .locked .leaf { filter: saturate(0.25) brightness(0.55); }
+
+    .window {
+      position: absolute; top: 15%; left: 50%; width: 46%; aspect-ratio: 1; transform: translateX(-50%); border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #fffbe6 0%, #ffe07a 40%, #ff9a3d 100%);
+      box-shadow: 0 0 0 7px var(--c3), 0 0 0 10px rgba(255,255,255,0.35), 0 0 26px rgba(255, 210, 63, 0.7);
+    }
+    .window::before, .window::after { content: ''; position: absolute; background: var(--c3); }
+    .window::before { left: 50%; top: 0; bottom: 0; width: 5px; transform: translateX(-50%); }
+    .window::after { top: 50%; left: 0; right: 0; height: 5px; transform: translateY(-50%); }
+    .locked .window { background: radial-gradient(circle at 35% 30%, #5d5470, #2b2338); box-shadow: 0 0 0 7px var(--c3), 0 0 0 10px rgba(255,255,255,0.15); }
+
+    .panel { position: absolute; left: 17%; right: 17%; border-radius: 12px; background: rgba(0,0,0,0.13);
+      box-shadow: inset 0 3px 5px rgba(0,0,0,0.35), 0 2px 0 rgba(255,255,255,0.22); }
+    .panel.p1 { top: 56%; height: 15%; }
+    .panel.p2 { top: 76%; height: 15%; }
+    .knob { position: absolute; right: 11%; top: 54%; width: 16px; height: 16px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #fff5c2, #ffd23f 45%, #a8641a 100%);
+      box-shadow: 0 3px 4px rgba(0,0,0,0.45); }
+
+    .lock { position: absolute; left: 50%; top: 58%; transform: translate(-50%, -50%); width: 46px; height: 54px; z-index: 3; }
+    .lock .shackle { position: absolute; left: 9px; top: 0; width: 28px; height: 30px; border-radius: 14px 14px 0 0;
+      border: 7px solid #c9ccd6; border-bottom: none; box-sizing: border-box; }
+    .lock .body { position: absolute; left: 0; top: 22px; width: 46px; height: 32px; border-radius: 9px;
+      background: linear-gradient(180deg, #ffe48a, #e3a62a); box-shadow: 0 4px 8px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.6); }
+    .lock .body::after { content: ''; position: absolute; left: 50%; top: 9px; width: 8px; height: 13px; transform: translateX(-50%);
+      border-radius: 4px; background: #5a3a10; }
+    .door-card:not(.locked) .lock { display: none; }
+
+    .star { position: absolute; top: -8px; right: -10px; z-index: 4; width: 50px; height: 50px; display: none;
+      filter: drop-shadow(0 0 10px rgba(255,210,63,0.9)); animation: pop 0.5s ease; }
+    .cleared .star { display: block; }
+    @keyframes pop { from { transform: scale(0) rotate(-40deg); } to { transform: scale(1) rotate(0); } }
+
+    .mat { width: 120px; height: 12px; margin-top: 14px; border-radius: 6px; background: linear-gradient(180deg, var(--c2), var(--c3));
+      box-shadow: 0 6px 10px rgba(0,0,0,0.45); opacity: 0.9; }
+    .state { margin-top: 12px; font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: 1px; color: var(--c1); min-height: 12px; }
+    .locked .state { color: #b9a9c9; }
+    .cleared .state { color: var(--sun); }
+    .door-card.next .state { animation: blink 1.2s steps(2, start) infinite; }
+    @keyframes blink { to { visibility: hidden; } }
+    .shake { animation: shake 0.4s; }
+    @keyframes shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+
+    .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(120px); z-index: 30;
+      padding: 12px 20px; border-radius: 12px; background: #12061f; border: 2px solid var(--sun); color: #fff;
+      font-size: 22px; transition: transform 0.3s ease; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ---------- question popup ---------- */
+    .overlay { display: none; position: fixed; inset: 0; z-index: 10; background: rgba(10, 5, 24, 0.88);
+      padding: 24px 12px; overflow: auto; backdrop-filter: blur(3px); }
+    .overlay.open { display: block; animation: fadein 0.25s ease; }
+    @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+    .terminal { max-width: 720px; margin: 0 auto; text-align: left; border-radius: 18px; border-width: 3px; }
+    .terminal h2 { margin: 0 0 4px; font-size: 34px; }
+    .qhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .dots { display: flex; gap: 8px; }
+    .dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--accent); }
+    .dot.done { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+    .dot.now { border-color: var(--sun); box-shadow: 0 0 8px var(--sun); }
+    .task { font-size: 24px; margin: 10px 0 12px; }
+    textarea, .answer {
+      width: 100%; padding: 10px; background: #05020d; color: var(--aqua); border: 2px solid var(--plum); border-radius: 8px;
       font-family: 'VT323', 'Courier New', monospace; font-size: 22px; line-height: 1.15; tab-size: 4;
     }
-    textarea:focus { outline: none; border-color: var(--aqua); }
-    .out {
-      background: #05020d; border-left: 4px solid var(--plum); padding: 8px 10px;
-      min-height: 2.2em; white-space: pre-wrap; margin: 10px 0 0; font-size: 21px;
-    }
+    textarea { height: 190px; resize: vertical; }
+    textarea:focus, .answer:focus { outline: none; border-color: var(--aqua); }
+    .out { background: #05020d; border-left: 4px solid var(--plum); padding: 8px 10px; border-radius: 6px;
+      min-height: 2.2em; white-space: pre-wrap; margin: 10px 0 0; font-size: 21px; }
     .out.good { border-color: var(--aqua); color: var(--aqua); }
     .out.bad { border-color: var(--pink); color: #ffb3e1; }
     .out.hint { border-color: var(--sun); color: var(--sun); }
+    .choice { display: block; width: 100%; text-align: left; margin: 7px 0; padding: 11px 14px; cursor: pointer;
+      background: #05020d; color: #eaf6ff; border: 2px solid var(--plum); border-radius: 10px;
+      font-family: 'VT323', 'Courier New', monospace; font-size: 23px; transition: border-color 0.15s, transform 0.15s; }
+    .choice:hover { border-color: var(--aqua); transform: translateX(4px); }
+    .choice.picked { border-color: var(--aqua); background: #0b2a33; }
     .row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 8px; }
     .row .small { font-size: 18px; opacity: 0.7; margin-left: auto; }
-    .choice { display: block; width: 100%; text-align: left; margin: 6px 0; padding: 10px 12px; cursor: pointer;
-      background: #05020d; color: #eaf6ff; border: 2px solid var(--plum); border-radius: 4px;
-      font-family: 'VT323', 'Courier New', monospace; font-size: 22px; }
-    .choice:hover { border-color: var(--aqua); }
-    .choice.picked { border-color: var(--aqua); background: #0b2a33; }
-    .answer { width: 100%; padding: 10px; margin-top: 10px; background: #05020d; color: var(--aqua);
-      border: 2px solid var(--plum); font-family: 'VT323', 'Courier New', monospace; font-size: 22px; }
-    .answer:focus { outline: none; border-color: var(--aqua); }
-    .win { max-width: 560px; margin: 60px auto 0; text-align: center; }
-    .win h2 { font-size: 44px; margin: 6px 0; }
-    .pad { display: none; justify-content: center; gap: 6px; margin: 10px 0; }
-    .pad .btn { margin: 0; padding: 14px 18px; }
-    @media (hover: none) { .pad { display: flex; } }
+    .win { max-width: 560px; margin: 60px auto 0; text-align: center; border-radius: 18px; }
+    .win h2 { font-size: 46px; margin: 6px 0; }
+
+    @media (max-width: 820px) {
+      .doors { grid-template-columns: repeat(2, 1fr); row-gap: 30px; }
+      .lamp { display: none; }
+    }
   </style>
 </head>
 <body>
   <div class="screen">
-    <h1 class="neon" style="margin:0">Programming Lab</h1>
-    <div class="pixel" id="status">BOOTING PYTHON...</div>
-    <canvas id="game" width="608" height="480"></canvas>
-    <div class="pad">
-      <button class="btn" data-dir="left">&#9664;</button>
-      <button class="btn" data-dir="up">&#9650;</button>
-      <button class="btn" data-dir="down">&#9660;</button>
-      <button class="btn" data-dir="right">&#9654;</button>
+    <p class="pixel" style="color:var(--aqua);margin:0">AI VICE · PYTHON CODING</p>
+    <h1 class="neon" style="margin:4px 0 0;font-size:52px">Programming Lab</h1>
+    <div class="topbar pixel">
+      <span class="pill" id="status">BOOTING PYTHON...</span>
+      <span class="pill">DOORS CLEARED <span id="clearedCount" style="color:var(--aqua)">0/4</span></span>
+      <span class="pill">TOKENS <span id="tokens" style="color:var(--sun)">0</span></span>
     </div>
-    <p class="help">Arrow keys or WASD to move. Walk through a doorway to enter a room, then walk into the glowing tablet and answer its 3 Python questions.</p>
-    <button class="btn ghost" onclick="AIVice.backToHub()">Back to AI Center</button>
+    <p class="lead"><b>Click a glowing door</b> to go inside. Answer its <b>3 Python questions</b> to unlock the next one.</p>
+
+    <div class="street">
+      <div class="doors" id="doors"></div>
+      <div class="sidewalk"></div>
+    </div>
+
+    <button class="btn ghost" style="margin-top:22px" onclick="AIVice.backToHub()">Back to AI Center</button>
   </div>
 
-  <!-- Question tablet -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Question popup -->
   <div class="overlay" id="terminal">
-    <div class="terminal card">
-      <div class="pixel" id="termRoom" style="color:var(--sun)">ROOM 1 / VARIABLES</div>
-      <h2 class="neon" id="termTitle">Code tablet</h2>
+    <div class="terminal card" id="termCard">
+      <div class="qhead">
+        <div class="pixel" id="termRoom" style="color:var(--sun)">DOOR 1 · VARIABLES</div>
+        <div class="dots" id="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+      </div>
+      <h2 class="neon" id="termTitle">The Welcome Chamber</h2>
       <div class="pixel" id="qNum" style="color:var(--aqua)">QUESTION 1 OF 3</div>
       <div class="task" id="termTask"></div>
       <pre class="out" id="qCode" style="display:none;color:#eaf6ff"></pre>
@@ -83,8 +212,8 @@
       <div class="row">
         <button class="btn" id="runBtn">CHECK</button>
         <button class="btn ghost" id="hintBtn" style="display:none">HINT</button>
-        <button class="btn ghost" id="closeBtn">CLOSE</button>
-        <span class="small">Enter checks · Esc closes</span>
+        <button class="btn ghost" id="closeBtn">LEAVE ROOM</button>
+        <span class="small">Enter checks · Esc leaves</span>
       </div>
       <div class="out" id="out"></div>
     </div>
@@ -93,7 +222,7 @@
   <!-- Win screen -->
   <div class="overlay" id="winScreen">
     <div class="win card">
-      <div class="pixel" style="color:var(--sun)">ALL 4 ROOMS CLEARED</div>
+      <div class="pixel" style="color:var(--sun)">ALL 4 DOORS CLEARED</div>
       <h2 class="neon">LAB CLEARED</h2>
       <p id="winText"></p>
       <button class="btn" onclick="AIVice.backToHub()">Back to AI Center</button>
@@ -106,9 +235,6 @@
   (function () {
     'use strict';
 
-    // ---------------------------------------------------------------- Rooms
-    // Each room's tablet is a Python task. Every case runs: before + player code + after,
-    // and what it prints must match `expected` (spacing is ignored).
     var ROOMS = [
       {
         title: 'VARIABLES', name: 'The Welcome Chamber', side: 'W',
@@ -118,11 +244,12 @@
           { type: 'choice', q: 'Which line stores the number 5 in a variable called score?',
             options: ['score = 5', '5 = score', 'score == 5', 'print(score, 5)'], answer: 'score = 5',
             explain: 'One = puts the value on the right into the name on the left.' },
-          { type: 'predict', q: 'What does this print?', code: 'x = 4\nx = x + 3\nprint(x)' },
+          { type: 'predict', q: 'What does this print?', code: 'x = 4\nx = x + 3\nprint(x)', answer: '7' },
           { type: 'code', q: 'This snippet is broken. Fix it so it prints exactly: Welcome to Miami',
             starter: 'city = "Miami"\nprint("Welcome to " + citty)\n',
             hint: 'Read the error: Python has no variable called "citty". The variable is spelled "city".',
-            cases: [{ expected: 'Welcome to Miami' }] }
+            cases: [{ expected: 'Welcome to Miami' }],
+            quick: [/print\s*\(/, /\bcity\b/], forbid: [/citty/] }
         ]
       },
       {
@@ -134,7 +261,7 @@
             options: ['Whether two values are equal', 'It stores a value in a variable', 'Whether a number is bigger', 'It ends the program'],
             answer: 'Whether two values are equal',
             explain: '== compares; a single = assigns. Mixing them up is the most common beginner bug.' },
-          { type: 'predict', q: 'What does this print?', code: 'score = 72\nif score >= 90:\n    print("A")\nelif score >= 70:\n    print("C")\nelse:\n    print("F")' },
+          { type: 'predict', q: 'What does this print?', code: 'score = 72\nif score >= 90:\n    print("A")\nelif score >= 70:\n    print("C")\nelse:\n    print("F")', answer: 'C' },
           { type: 'code', q: 'A variable called power is already set. Print "door opens" if power is 5 or more, otherwise print "door stays shut".',
             starter: '# power already exists\n',
             hint: 'if power >= 5:\n    print("door opens")\nelse:\n    ... (indent the line under else too)',
@@ -142,7 +269,8 @@
               { before: 'power = 7', expected: 'door opens' },
               { before: 'power = 5', expected: 'door opens' },
               { before: 'power = 2', expected: 'door stays shut' }
-            ] }
+            ],
+            quick: [/\bif\b/, /power\s*(>=\s*5|>\s*4)/, /door opens/, /\belse\b/, /door stays shut/] }
         ]
       },
       {
@@ -153,14 +281,15 @@
           { type: 'choice', q: 'Which numbers does range(3) give you?',
             options: ['0, 1, 2', '1, 2, 3', '0, 1, 2, 3', '3, 3, 3'], answer: '0, 1, 2',
             explain: 'range starts at 0 and stops just BEFORE the number you give it.' },
-          { type: 'predict', q: 'What does this print?', code: 'total = 0\nfor n in [2, 4, 6]:\n    total += n\nprint(total)' },
+          { type: 'predict', q: 'What does this print?', code: 'total = 0\nfor n in [2, 4, 6]:\n    total += n\nprint(total)', answer: '12' },
           { type: 'code', q: 'A variable called torches is already set. Light every torch: print "torch 1 lit", "torch 2 lit", ... up to torches.',
             starter: '# torches already exists\n',
             hint: 'for i in range(1, torches + 1):\n    print(f"torch {i} lit")   <- an f-string puts i inside the text',
             cases: [
               { before: 'torches = 3', expected: 'torch 1 lit\ntorch 2 lit\ntorch 3 lit' },
               { before: 'torches = 1', expected: 'torch 1 lit' }
-            ] }
+            ],
+            quick: [/\bfor\b/, /range\s*\(/, /torches/, /torch/, /lit/] }
         ]
       },
       {
@@ -171,7 +300,7 @@
           { type: 'choice', q: 'Which keyword sends a value back out of a function?',
             options: ['return', 'print', 'def', 'output'], answer: 'return',
             explain: 'print only shows a value on screen; return hands it back so other code can use it.' },
-          { type: 'predict', q: 'What does this print?', code: 'def add(a, b):\n    return a + b\n\nprint(add(2, 5))' },
+          { type: 'predict', q: 'What does this print?', code: 'def add(a, b):\n    return a + b\n\nprint(add(2, 5))', answer: '7' },
           { type: 'code', q: 'BOSS QUESTION: write a function count_evens(numbers) that returns how many numbers in the list are even.',
             starter: 'def count_evens(numbers):\n    # your code here\n    pass\n',
             hint: 'A number n is even when n % 2 == 0. Start a counter at 0, loop over numbers, add 1 for each even one, then return the counter.',
@@ -180,9 +309,17 @@
               { after: 'print(count_evens([]))', expected: '0' },
               { after: 'print(count_evens([7, 9]))', expected: '0' },
               { after: 'print(count_evens([10, -2, 3]))', expected: '2' }
-            ] }
+            ],
+            quick: [/def\s+count_evens\s*\(/, /%\s*2/, /\breturn\b/], forbid: [/^\s*pass\s*$/m] }
         ]
       }
+    ];
+
+    var DOOR_LOOK = [
+      { c1: '#7af4ff', c2: '#17a9cc', c3: '#0b5266', code: 'x = 5' },
+      { c1: '#d6a2ff', c2: '#8a3fd6', c3: '#45167a', code: 'if / else' },
+      { c1: '#ffc08a', c2: '#f07a2a', c3: '#8a3a10', code: 'for i in' },
+      { c1: '#ff9ad5', c2: '#ff2fb3', c3: '#8a0f5c', code: 'def f():' }
     ];
 
     // --------------------------------------------------- Python (Pyodide)
@@ -206,11 +343,20 @@
       "};"
     ].join('\n');
     var workerUrl = URL.createObjectURL(new Blob([WORKER_SRC], { type: 'text/javascript' }));
-    var worker, pyReady, isReady = false;
+    var worker, pyReady, isReady = false, quickMode = false;
+    function pyFailed() {
+      if (isReady || quickMode) return;
+      quickMode = true;
+      statusEl.textContent = 'QUICK CHECK MODE';
+      statusEl.className = 'pill ready';
+      if (terminalOpen) showQuestion();
+    }
+    setTimeout(pyFailed, 20000);
 
     function startWorker() {
       isReady = false;
-      worker = new Worker(workerUrl);
+      try { worker = new Worker(workerUrl); } catch (err) { setTimeout(pyFailed, 0); worker = { postMessage: function () {}, terminate: function () {} }; }
+      worker.onerror = function () { pyFailed(); };
       pyReady = new Promise(function (resolve) {
         worker.onmessage = function (e) {
           if (e.data.type === 'ready') { isReady = true; resolve(); }
@@ -240,334 +386,79 @@
     var statusEl = document.getElementById('status');
     function setReadyStatus() {
       statusEl.textContent = 'PYTHON READY';
-      statusEl.className = 'pixel ready';
+      statusEl.className = 'pill ready';
       if (terminalOpen) runBtn.disabled = false;
     }
     startWorker();
 
-    // ---------------------------------------------------------- The world
-    var TILE = 32, COLS = 19, ROWS = 13, HUD = 64;
-    var canvas = document.getElementById('game');
-    var ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-
-    // Doorways in the hall, one per room, in the middle of each wall
-    var HALL_DOORS = { W: { x: 1, y: 6 }, N: { x: 9, y: 1 }, E: { x: 17, y: 6 }, S: { x: 9, y: 11 } };
-    var IN_FRONT = { W: { x: 2, y: 6 }, N: { x: 9, y: 2 }, E: { x: 16, y: 6 }, S: { x: 9, y: 10 } };
-    var HALL_BLOCKS = [[4, 3], [14, 3], [4, 9], [14, 9]];
-    var ROOM_EXIT = { x: 9, y: 11 };
-    var TABLET = { x: 9, y: 3 };
-    var PORTAL = { x: 9, y: 6 };
-
-    var scene = 'hall';           // 'hall' or a room index 0-3
-    var player = { x: 9, y: 8, dir: 'up' };
+    // ---------------------------------------------------------- The doors
     var cleared = [false, false, false, false];
-    var fade = 0, fadeDir = 0, pendingSwitch = null;
-    var flash = 0, message = '', messageUntil = 0;
-    var hintsUsed = 0, finished = false;
+    var current = null, hintsUsed = 0;
+    var doorsEl = document.getElementById('doors');
+    var STAR = '<svg class="star" viewBox="0 0 50 50"><path d="M25 3l6.5 14 15 1.6-11.3 10.2 3.2 15L25 36.3 11.6 43.8l3.2-15L3.5 18.6l15-1.6z" fill="#ffd23f" stroke="#fff3b0" stroke-width="2" stroke-linejoin="round"/></svg>';
 
-    function allCleared() { return cleared.every(Boolean); }
     function isUnlocked(i) { return i === 0 || cleared[i - 1]; }
-    function roomOfSide(side) { for (var i = 0; i < 4; i++) if (ROOMS[i].side === side) return i; return -1; }
 
-    function say(text, ms) { message = text; messageUntil = performance.now() + (ms || 2600); }
-
-    function blocksHere() { return scene === 'hall' ? HALL_BLOCKS : ROOMS[scene].blocks; }
-    function isBlock(x, y) {
-      var b = blocksHere();
-      for (var i = 0; i < b.length; i++) if (b[i][0] === x && b[i][1] === y) return true;
-      return false;
-    }
-    function isWall(x, y) { return x <= 1 || y <= 1 || x >= COLS - 2 || y >= ROWS - 2; }
-    function doorAt(x, y) {
-      if (scene === 'hall') {
-        for (var s in HALL_DOORS) if (HALL_DOORS[s].x === x && HALL_DOORS[s].y === y) return s;
-        return null;
-      }
-      return (x === ROOM_EXIT.x && y === ROOM_EXIT.y) ? 'exit' : null;
-    }
-
-    function switchScene(next, pos, dir) {
-      if (fadeDir) return;
-      pendingSwitch = { next: next, pos: pos, dir: dir };
-      fadeDir = 1;
-    }
-
-    function applySwitch() {
-      scene = pendingSwitch.next;
-      player.x = pendingSwitch.pos.x; player.y = pendingSwitch.pos.y; player.dir = pendingSwitch.dir;
-      pendingSwitch = null;
-      if (scene === 'hall') {
-        if (allCleared()) say('A portal opened in the middle of the hall!', 4000);
-      } else {
-        say(cleared[scene] ? 'Room already cleared.' : ROOMS[scene].name + ': walk into the tablet. Answer 3 questions!', 3000);
-      }
-    }
-
-    function move(dx, dy, dir) {
-      if (terminalOpen || finished || fadeDir) return;
-      player.dir = dir;
-      var nx = player.x + dx, ny = player.y + dy;
-      var door = doorAt(nx, ny);
-
-      if (scene === 'hall') {
-        if (door) {
-          var i = roomOfSide(door);
-          if (!isUnlocked(i)) { say('Locked! Clear Room ' + i + ' first.'); return; }
-          switchScene(i, { x: 9, y: 10 }, 'up');
-          return;
-        }
-        if (allCleared() && nx === PORTAL.x && ny === PORTAL.y) { player.x = nx; player.y = ny; win(); return; }
-      } else {
-        if (door === 'exit') { switchScene('hall', IN_FRONT[ROOMS[scene].side], oppositeDir(ROOMS[scene].side)); return; }
-        if (nx === TABLET.x && ny === TABLET.y) {
-          if (cleared[scene]) say('This tablet is already solved. Head back to the hall.');
-          else openTerminal();
-          return;
-        }
-      }
-      if (isWall(nx, ny) || isBlock(nx, ny)) return;
-      player.x = nx; player.y = ny;
-    }
-    function oppositeDir(side) { return { W: 'right', N: 'down', E: 'left', S: 'up' }[side]; }
-
-    var KEYS = {
-      ArrowUp: [0, -1, 'up'], w: [0, -1, 'up'], W: [0, -1, 'up'],
-      ArrowDown: [0, 1, 'down'], s: [0, 1, 'down'], S: [0, 1, 'down'],
-      ArrowLeft: [-1, 0, 'left'], a: [-1, 0, 'left'], A: [-1, 0, 'left'],
-      ArrowRight: [1, 0, 'right'], d: [1, 0, 'right'], D: [1, 0, 'right']
-    };
-    document.addEventListener('keydown', function (e) {
-      if (terminalOpen) {
-        if (e.key === 'Escape') closeTerminal();
-        return; // let the player type freely in the editor
-      }
-      var k = KEYS[e.key];
-      if (k) { e.preventDefault(); move(k[0], k[1], k[2]); }
-    });
-    document.querySelectorAll('.pad .btn').forEach(function (b) {
-      b.addEventListener('click', function () {
-        var map = { up: KEYS.ArrowUp, down: KEYS.ArrowDown, left: KEYS.ArrowLeft, right: KEYS.ArrowRight };
-        var k = map[b.dataset.dir];
-        move(k[0], k[1], k[2]);
-      });
+    ROOMS.forEach(function (room, i) {
+      var look = DOOR_LOOK[i];
+      var card = document.createElement('div');
+      card.className = 'door-card';
+      card.tabIndex = 0;
+      card.setAttribute('role', 'button');
+      card.style.setProperty('--c1', look.c1);
+      card.style.setProperty('--c2', look.c2);
+      card.style.setProperty('--c3', look.c3);
+      card.innerHTML =
+        '<div class="sign"><span class="code">' + look.code + '</span><span class="label">DOOR ' + (i + 1) + ' · ' + room.title + '</span></div>' +
+        '<div class="lamp"></div>' +
+        '<div class="doorway">' + STAR +
+          '<div class="leaf"><div class="window"></div><div class="panel p1"></div><div class="panel p2"></div><div class="knob"></div></div>' +
+          '<div class="lock"><div class="shackle"></div><div class="body"></div></div>' +
+        '</div>' +
+        '<div class="mat"></div>' +
+        '<div class="state"></div>';
+      card.addEventListener('click', function () { tryDoor(i, card); });
+      card.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tryDoor(i, card); } });
+      doorsEl.appendChild(card);
     });
 
-    // ------------------------------------------------------- Drawing
-    var C = { aqua: '#2ee6ff', pink: '#ff2fb3', sun: '#ffd23f', sunset: '#ff7a3d', night: '#0a0518', plum: '#2b1140' };
-    var HALL_STYLE = { wall: '#1b3f66', brick: '#2a5c8f', floor: '#0b1a2e', floor2: '#11253f' };
-
-    function rect(x, y, w, h, color) { ctx.fillStyle = color; ctx.fillRect(x, y + HUD, w, h); }
-    function text(s, x, y, color, size) {
-      ctx.fillStyle = color; ctx.font = (size || 10) + 'px "Press Start 2P", monospace'; ctx.fillText(s, x, y);
-    }
-
-    function drawWallTile(x, y, st) {
-      var px = x * TILE, py = y * TILE;
-      rect(px, py, TILE, TILE, st.wall);
-      // brick pattern
-      ctx.fillStyle = st.brick;
-      for (var r = 0; r < 4; r++) {
-        var off = (r % 2) * 8;
-        for (var c = -1; c < 3; c++) ctx.fillRect(px + c * 16 + off + 1, py + HUD + r * 8 + 1, 14, 6);
-      }
-    }
-
-    function drawFloorTile(x, y, st) {
-      var px = x * TILE, py = y * TILE;
-      rect(px, py, TILE, TILE, st.floor);
-      rect(px + 1, py + 1, TILE - 2, TILE - 2, st.floor2);
-      rect(px + 12, py + 12, 8, 8, st.floor);        // little diamond studs
-      rect(px + 14, py + 10, 4, 12, st.floor);
-      rect(px + 10, py + 14, 12, 4, st.floor);
-    }
-
-    function drawDoorway(x, y, side, state, label) {
-      // state: 'open' | 'locked' | 'cleared' | 'exit'
-      var px = x * TILE, py = y * TILE;
-      var t = performance.now();
-      rect(px, py, TILE, TILE, '#000');
-      // arch frame
-      var frame = state === 'locked' ? C.pink : state === 'cleared' ? C.aqua : '#9aa7c7';
-      ctx.fillStyle = frame;
-      if (side === 'N' || side === 'S' || side === 'exit') {
-        ctx.fillRect(px - 4, py + HUD, 4, TILE); ctx.fillRect(px + TILE, py + HUD, 4, TILE);
-      } else {
-        ctx.fillRect(px, py + HUD - 4, TILE, 4); ctx.fillRect(px, py + HUD + TILE, TILE, 4);
-      }
-      if (state === 'locked') {
-        ctx.fillStyle = C.pink;
-        for (var b = 4; b < TILE; b += 8) {
-          if (side === 'N' || side === 'S') ctx.fillRect(px + b, py + HUD, 3, TILE);
-          else ctx.fillRect(px, py + HUD + b, TILE, 3);
-        }
-        rect(px + 10, py + 14, 12, 10, C.sun);   // padlock
-        rect(px + 12, py + 9, 8, 6, C.sun);
-        rect(px + 14, py + 11, 4, 4, '#000');
-        rect(px + 15, py + 17, 2, 4, '#000');
-      } else if (state === 'cleared') {
-        ctx.globalAlpha = 0.35 + 0.25 * Math.sin(t / 220);
-        rect(px + 2, py + 2, TILE - 4, TILE - 4, C.aqua);
-        ctx.globalAlpha = 1;
-      }
-      if (label) {
-        var lx = px + 10, ly = py + HUD;
-        if (side === 'N') ly = py + HUD - 10 + 0;
-        if (side === 'N') { lx = px + TILE + 10; ly = py + HUD + 22; }
-        if (side === 'S') { lx = px + TILE + 10; ly = py + HUD + 22; }
-        if (side === 'W') { lx = px + 2; ly = py + HUD - 10; }
-        if (side === 'E') { lx = px + 10; ly = py + HUD - 10; }
-        text(label, lx, ly, state === 'locked' ? C.pink : C.sun, 10);
-      }
-    }
-
-    function drawStatue(x, y, eye) {
-      var px = x * TILE, py = y * TILE;
-      ctx.globalAlpha = 0.35; rect(px + 4, py + 26, 24, 5, '#000'); ctx.globalAlpha = 1;
-      rect(px + 4, py + 6, 24, 22, '#5d6b8a');
-      rect(px + 6, py + 2, 20, 8, '#7d8bab');
-      rect(px + 4, py + 24, 24, 4, '#3e4862');
-      rect(px + 9, py + 12, 4, 4, eye || '#1a1f2e');
-      rect(px + 19, py + 12, 4, 4, eye || '#1a1f2e');
-      rect(px + 12, py + 19, 8, 2, '#3e4862');
-    }
-
-    function drawTorch(x, y, lit, t) {
-      var px = x * TILE, py = y * TILE;
-      rect(px + 8, py + 18, 16, 10, '#3b2a22');
-      rect(px + 6, py + 16, 20, 4, '#5a4032');
-      if (lit) {
-        var f = Math.sin(t / 80 + x * 3) * 2;
-        ctx.globalAlpha = 0.18; rect(px - 10, py - 12, 52, 50, C.sun); ctx.globalAlpha = 1;
-        rect(px + 9, py + 6 - f, 14, 11 + f, C.sunset);
-        rect(px + 12, py + 3 - f, 8, 9, C.sun);
-      } else {
-        rect(px + 12, py + 12, 8, 5, '#2a1c16');
-      }
-    }
-
-    function drawTablet(solved, t) {
-      var px = TABLET.x * TILE, py = TABLET.y * TILE;
-      ctx.globalAlpha = 0.35; rect(px + 2, py + 28, 28, 4, '#000'); ctx.globalAlpha = 1;
-      rect(px + 2, py + 2, 28, 28, '#3a3f55');
-      rect(px + 4, py + 4, 24, 20, '#05020d');
-      var col = solved ? C.aqua : C.pink;
-      ctx.globalAlpha = solved ? 1 : 0.6 + 0.4 * Math.sin(t / 180);
-      rect(px + 6, py + 7, 14, 2, col);
-      rect(px + 6, py + 12, 18, 2, col);
-      rect(px + 6, py + 17, 10, 2, col);
-      if (!solved && Math.floor(t / 400) % 2) rect(px + 18, py + 17, 4, 3, col);
-      ctx.globalAlpha = 1;
-      if (!solved) { ctx.globalAlpha = 0.15 + 0.1 * Math.sin(t / 180); rect(px - 6, py - 6, 44, 44, C.pink); ctx.globalAlpha = 1; }
-    }
-
-    function drawPortal(t) {
-      var cx = PORTAL.x * TILE + 16, cy = PORTAL.y * TILE + 16 + HUD;
-      for (var r = 0; r < 3; r++) {
-        ctx.strokeStyle = r % 2 ? C.pink : C.aqua;
-        ctx.lineWidth = 3;
-        ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t / 200 + r);
-        ctx.beginPath(); ctx.arc(cx, cy, 6 + r * 5 + 2 * Math.sin(t / 150 + r), 0, Math.PI * 2); ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-    }
-
-    function drawPlayer(t) {
-      var ch = AIVice.getActiveCharacter().colors;
-      var px = player.x * TILE, py = player.y * TILE;
-      var bob = Math.sin(t / 200) > 0 ? 1 : 0;
-      ctx.globalAlpha = 0.35; rect(px + 6, py + 27, 20, 3, '#000'); ctx.globalAlpha = 1;
-      rect(px + 8, py + 12 - bob, 16, 14, ch.accent);
-      rect(px + 10, py + 4 - bob, 12, 10, ch.body);
-      rect(px + 10, py + 4 - bob, 12, 3, C.night);
-      var eyeY = py + 8 - bob;
-      if (player.dir === 'left') rect(px + 11, eyeY, 2, 2, C.night);
-      else if (player.dir === 'right') rect(px + 19, eyeY, 2, 2, C.night);
-      else if (player.dir === 'down') { rect(px + 12, eyeY, 2, 2, C.night); rect(px + 18, eyeY, 2, 2, C.night); }
-      rect(px + 9, py + 26 - bob, 5, 3, C.plum);
-      rect(px + 18, py + 26 - bob, 5, 3, C.plum);
-    }
-
-    function drawHud(t) {
-      ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, HUD);
-      text(scene === 'hall' ? 'LAB HALL' : 'ROOM ' + (scene + 1) + ' ' + ROOMS[scene].title, 14, 24, C.sun, 10);
-      // mini-map: the hall in the middle, a room on each side
-      var mx = 470, my = 8, s = 14;
-      var spots = { N: [mx + s, my], W: [mx, my + s], E: [mx + 2 * s, my + s], S: [mx + s, my + 2 * s] };
-      ctx.fillStyle = scene === 'hall' ? C.sun : '#555';
-      ctx.fillRect(mx + s + 1, my + s + 1, s - 2, s - 2);
+    function renderDoors() {
+      var cards = doorsEl.children;
+      var next = cleared.indexOf(false);
       for (var i = 0; i < 4; i++) {
-        var p = spots[ROOMS[i].side];
-        ctx.fillStyle = scene === i ? C.sun : cleared[i] ? C.aqua : isUnlocked(i) ? '#9aa7c7' : C.pink;
-        ctx.fillRect(p[0] + 1, p[1] + 1, s - 2, s - 2);
+        var c = cards[i];
+        c.classList.toggle('locked', !isUnlocked(i));
+        c.classList.toggle('cleared', cleared[i]);
+        c.classList.toggle('next', i === next);
+        c.querySelector('.state').textContent = cleared[i] ? '★ CLEARED' : isUnlocked(i) ? '▶ CLICK TO ENTER' : 'LOCKED';
       }
-      var done = cleared.filter(Boolean).length;
-      text('CLEARED ' + done + '/4', 14, 48, C.aqua, 10);
-      text('TOKENS ' + AIVice.getTokens(), 220, 48, C.sun, 10);
-      if (scene !== 'hall') text('QUESTIONS ' + (cleared[scene] ? 3 : qIndex[scene]) + '/3', 220, 24, C.pink, 10);
+      document.getElementById('clearedCount').textContent = cleared.filter(Boolean).length + '/4';
+      document.getElementById('tokens').textContent = AIVice.getTokens();
     }
 
-    function frame(t) {
-      var st = scene === 'hall' ? HALL_STYLE : ROOMS[scene];
-      for (var y = 0; y < ROWS; y++) {
-        for (var x = 0; x < COLS; x++) {
-          if (isWall(x, y)) drawWallTile(x, y, st); else drawFloorTile(x, y, st);
-        }
-      }
-      // inner wall edge
-      ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
-      ctx.strokeRect(2 * TILE, 2 * TILE + HUD, (COLS - 4) * TILE, (ROWS - 4) * TILE);
-
-      if (scene === 'hall') {
-        for (var i = 0; i < 4; i++) {
-          var side = ROOMS[i].side, d = HALL_DOORS[side];
-          var state = cleared[i] ? 'cleared' : isUnlocked(i) ? 'open' : 'locked';
-          drawDoorway(d.x, d.y, side, state, String(i + 1));
-          // fill the outer wall tile behind the doorway too, so it reads as a passage
-          var ox = side === 'W' ? 0 : side === 'E' ? COLS - 1 : d.x;
-          var oy = side === 'N' ? 0 : side === 'S' ? ROWS - 1 : d.y;
-          rect(ox * TILE, oy * TILE, TILE, TILE, '#000');
-        }
-        HALL_BLOCKS.forEach(function (b) { drawStatue(b[0], b[1]); });
-        if (allCleared()) drawPortal(t);
-      } else {
-        var room = ROOMS[scene];
-        drawDoorway(ROOM_EXIT.x, ROOM_EXIT.y, 'exit', 'open', null);
-        rect(ROOM_EXIT.x * TILE, (ROWS - 1) * TILE, TILE, TILE, '#000');
-        room.blocks.forEach(function (b) {
-          if (room.deco === 'torch') drawTorch(b[0], b[1], cleared[scene], t);
-          else if (room.deco === 'boss') drawStatue(b[0], b[1], cleared[scene] ? C.aqua : C.pink);
-          else drawStatue(b[0], b[1]);
-        });
-        drawTablet(cleared[scene], t);
-      }
-
-      drawPlayer(t);
-      drawHud(t);
-      if (message && t < messageUntil) {
-        ctx.font = '10px "Press Start 2P", monospace';
-        var w = Math.min(canvas.width - 24, ctx.measureText(message).width + 28);
-        ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect((canvas.width - w) / 2, HUD + 8, w, 26);
-        ctx.strokeStyle = C.sun; ctx.lineWidth = 2; ctx.strokeRect((canvas.width - w) / 2, HUD + 8, w, 26);
-        ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center'; ctx.fillText(message, canvas.width / 2, HUD + 26); ctx.textAlign = 'left';
-      }
-
-      if (flash > 0) { ctx.globalAlpha = flash; ctx.fillStyle = C.aqua; ctx.fillRect(0, HUD, canvas.width, canvas.height - HUD); ctx.globalAlpha = 1; flash = Math.max(0, flash - 0.04); }
-
-      // fade between scenes
-      if (fadeDir) {
-        fade += 0.12 * fadeDir;
-        if (fade >= 1) { fade = 1; applySwitch(); fadeDir = -1; }
-        if (fade <= 0) { fade = 0; fadeDir = 0; }
-      }
-      if (fade > 0) { ctx.globalAlpha = fade; ctx.fillStyle = '#000'; ctx.fillRect(0, HUD, canvas.width, canvas.height - HUD); ctx.globalAlpha = 1; }
-
-      requestAnimationFrame(frame);
+    var toastEl = document.getElementById('toast'), toastTimer;
+    function toast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 2400);
     }
-    requestAnimationFrame(frame);
 
-    // ------------------------------------------------------- Question tablet
+    function tryDoor(i, card) {
+      if (terminalOpen) return;
+      if (!isUnlocked(i)) {
+        card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake');
+        toast('Locked! Clear Door ' + i + ' first.');
+        return;
+      }
+      if (cleared[i]) { toast('Door ' + (i + 1) + ' is already cleared. Nice work!'); return; }
+      card.classList.add('opening');
+      setTimeout(function () { openRoom(i); }, 550);
+    }
+
+    // ------------------------------------------------------- Question popup
     var terminal = document.getElementById('terminal');
+    var termCard = document.getElementById('termCard');
     var codeEl = document.getElementById('code');
     var answerEl = document.getElementById('answer');
     var choicesEl = document.getElementById('choices');
@@ -576,25 +467,30 @@
     var runBtn = document.getElementById('runBtn');
     var hintBtn = document.getElementById('hintBtn');
     var terminalOpen = false, busy = false;
-    var qIndex = [0, 0, 0, 0];           // which question each room is on
+    var qIndex = [0, 0, 0, 0];
     var wrongTries = {}, hintUnlocked = {}, drafts = {}, picked = null;
 
     function norm(s) { return String(s).trim().split(/\s+/).join(' '); }
     function setOut(t, kind) { outEl.textContent = t; outEl.className = 'out' + (kind ? ' ' + kind : ''); }
     function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
-    function key() { return scene + '-' + qIndex[scene]; }
+    function key() { return current + '-' + qIndex[current]; }
 
-    function openTerminal() {
+    function openRoom(i) {
+      current = i;
       terminalOpen = true;
+      termCard.style.setProperty('--accent', DOOR_LOOK[i].c1);
       showQuestion();
       terminal.classList.add('open');
     }
 
     function showQuestion() {
-      var room = ROOMS[scene], q = room.questions[qIndex[scene]];
-      document.getElementById('termRoom').textContent = 'ROOM ' + (scene + 1) + ' / ' + room.title;
+      var room = ROOMS[current], q = room.questions[qIndex[current]];
+      document.getElementById('termRoom').textContent = 'DOOR ' + (current + 1) + ' · ' + room.title;
       document.getElementById('termTitle').textContent = room.name;
-      document.getElementById('qNum').textContent = 'QUESTION ' + (qIndex[scene] + 1) + ' OF 3';
+      document.getElementById('qNum').textContent = 'QUESTION ' + (qIndex[current] + 1) + ' OF 3';
+      document.querySelectorAll('#dots .dot').forEach(function (d, n) {
+        d.className = 'dot' + (n < qIndex[current] ? ' done' : n === qIndex[current] ? ' now' : '');
+      });
       document.getElementById('termTask').textContent = q.q;
       qCodeEl.style.display = q.type === 'predict' ? 'block' : 'none';
       qCodeEl.textContent = q.code || '';
@@ -619,7 +515,7 @@
       }
       hintBtn.style.display = hintUnlocked[key()] ? 'inline-block' : 'none';
       runBtn.textContent = q.type === 'code' ? 'RUN' : 'CHECK';
-      var needsPython = q.type !== 'choice';
+      var needsPython = q.type === 'code' && !quickMode;
       runBtn.disabled = needsPython && !isReady;
       if (needsPython && !isReady) setOut('Python is still booting up. One moment...', 'hint');
       else setOut(q.type === 'choice' ? 'Pick an answer, then press CHECK.' : q.type === 'predict' ? 'Type the output, then press CHECK.' : 'Write your code, then press RUN.', '');
@@ -628,11 +524,14 @@
     }
 
     function closeTerminal() {
-      if (typeof scene === 'number' && ROOMS[scene].questions[qIndex[scene]].type === 'code') drafts[key()] = codeEl.value;
+      if (current !== null && ROOMS[current].questions[qIndex[current]].type === 'code') drafts[key()] = codeEl.value;
       terminalOpen = false;
       terminal.classList.remove('open');
+      if (current !== null) doorsEl.children[current].classList.remove('opening');
+      renderDoors();
     }
 
+    document.addEventListener('keydown', function (e) { if (terminalOpen && e.key === 'Escape') closeTerminal(); });
     codeEl.addEventListener('keydown', function (e) {
       if (e.key === 'Tab') {
         e.preventDefault();
@@ -647,18 +546,23 @@
     document.getElementById('closeBtn').addEventListener('click', closeTerminal);
     hintBtn.addEventListener('click', function () {
       hintsUsed += 1;
-      setOut('HINT: ' + ROOMS[scene].questions[qIndex[scene]].hint, 'hint');
+      setOut('HINT: ' + ROOMS[current].questions[qIndex[current]].hint, 'hint');
     });
 
     function check() {
       if (busy) return;
-      var roomIdx = scene, room = ROOMS[roomIdx], q = room.questions[qIndex[roomIdx]];
+      var q = ROOMS[current].questions[qIndex[current]];
 
       if (q.type === 'choice') {
         if (!picked) { setOut('Pick one of the answers first.', 'hint'); return; }
         if (picked === q.answer) return correct(q.explain);
         return setOut('Not quite. Try another answer.', 'bad');
       }
+      if (q.type === 'predict' && q.answer) {
+        if (norm(answerEl.value) === norm(q.answer)) return correct('');
+        return setOut('Not quite. Trace the code line by line and try again.', 'bad');
+      }
+      if (!isReady && quickMode && q.type === 'code') return quickCheck(q);
       if (!isReady) return;
       busy = true;
       runBtn.disabled = true;
@@ -698,39 +602,54 @@
       })();
     }
 
+    function quickCheck(q) {
+      var code = codeEl.value;
+      var ok = q.quick.every(function (re) { return re.test(code); }) && !(q.forbid || []).some(function (re) { return re.test(code); });
+      if (ok) { drafts[key()] = code; return correct(''); }
+      setOut('Not quite yet. Check the task again: something it asks for is missing from your code.', 'bad');
+      var k = key();
+      wrongTries[k] = (wrongTries[k] || 0) + 1;
+      if (wrongTries[k] >= 2 && !hintUnlocked[k]) {
+        hintUnlocked[k] = true;
+        hintBtn.style.display = 'inline-block';
+        outEl.textContent += '\n\nStuck? A HINT button just unlocked.';
+      }
+    }
+
     function correct(explain) {
-      var roomIdx = scene;
+      var roomIdx = current;
       var last = qIndex[roomIdx] === 2;
-      setOut((last ? 'ACCESS GRANTED. Room cleared!' : 'Correct!') + (explain ? ' ' + explain : ''), 'good');
+      setOut((last ? 'DOOR CLEARED! All 3 correct.' : 'Correct!') + (explain ? ' ' + explain : ''), 'good');
+      document.querySelectorAll('#dots .dot')[qIndex[roomIdx]].className = 'dot done';
       busy = true;
       runBtn.disabled = true;
       setTimeout(function () {
         busy = false;
         runBtn.disabled = false;
         if (!last) { qIndex[roomIdx] += 1; showQuestion(); return; }
-        closeTerminal();
         cleared[roomIdx] = true;
-        flash = 0.85;
-        say(roomIdx < 3 ? 'Room ' + (roomIdx + 2) + ' is unlocked! Head back to the hall.' : 'Vault cleared! Return to the hall.', 4000);
+        closeTerminal();
+        if (cleared.every(Boolean)) { setTimeout(win, 900); return; }
+        toast('Door ' + (roomIdx + 2) + ' is unlocked!');
       }, explain ? 1800 : 900);
     }
 
     // ------------------------------------------------------------ Win
     function win() {
-      finished = true;
       var earned = 0;
       if (AIVice.markComplete('python-lab')) {
         AIVice.addTokens('python-lab', 50);
         earned = 50;
         if (hintsUsed === 0) { AIVice.addTokens('python-lab', 10); earned += 10; }
       }
+      renderDoors();
       document.getElementById('winText').textContent = earned
         ? '+' + earned + ' AI tokens' + (earned > 50 ? ' (includes a 10-token no-hints bonus)' : '') + '. You now have ' + AIVice.getTokens() + '.'
         : 'You already earned your tokens for this lab. You have ' + AIVice.getTokens() + ' AI tokens.';
       document.getElementById('winScreen').classList.add('open');
     }
 
-    say('Room 1 is open. Find the door marked 1.', 4000);
+    renderDoors();
   })();
   </script>
 </body>
