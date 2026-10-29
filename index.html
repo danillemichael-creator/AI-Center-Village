@@ -86,27 +86,82 @@
     }
     .mute-btn.off { color: #5a5080; }
 
-    #player-modal {
-      position: fixed; inset: 0; display: none;
-      background: rgba(10, 5, 24, 0.92);
-      z-index: 40;
-      align-items: center; justify-content: center;
+    body:not(.playing) #hud, body:not(.playing) #stage { visibility: hidden; }
+
+    #start { position: fixed; inset: 0; z-index: 35; transition: opacity .5s; }
+    #start.done { opacity: 0; pointer-events: none; }
+    .scr { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; background: var(--night); }
+    .scr.on { display: flex; }
+
+    #sunset { position: absolute; inset: 0; }
+    #scr-title > * { position: relative; z-index: 1; }
+    #scr-title .logo { font-size: clamp(56px, 12vw, 110px); margin: 0; letter-spacing: 4px; }
+    #scr-title .sub { color: var(--aqua); margin: 4px 0 40px; }
+    #menu { list-style: none; padding: 0; margin: 0; text-align: left; }
+    #menu li {
+      font-family: 'Press Start 2P', monospace; font-size: 15px;
+      padding: 12px 12px 12px 34px; cursor: pointer; color: #8a7fb0;
+      position: relative;
     }
-    #player-modal.open { display: flex; }
-    #player-modal .card { max-width: 440px; text-align: center; padding: 32px; }
-    #player-modal input {
+    #menu li.sel { color: var(--sun); text-shadow: 0 0 12px var(--sun); }
+    #menu li.sel::before {
+      content: '\25B8'; position: absolute; left: 8px;
+      color: var(--pink); animation: blink 0.8s steps(2) infinite;
+    }
+
+    .scr .card { max-width: 480px; width: calc(100% - 32px); text-align: center; padding: 28px; }
+    .scr input {
       display: block; width: 100%; margin: 12px 0;
       font-family: 'VT323', monospace; font-size: 26px; text-align: center;
       background: var(--night); color: var(--aqua);
       border: 2px solid var(--aqua); border-radius: 4px; padding: 8px;
+      box-sizing: border-box;
     }
-    #player-modal input::placeholder { color: #5a5080; }
-    #player-modal .hint { color: #8a7fb0; font-size: 18px; margin: 0 0 12px; }
+    .scr input::placeholder { color: #5a5080; }
+    .scr .hint { color: #8a7fb0; font-size: 18px; margin: 8px 0; }
+    .crew-code {
+      font-family: 'Press Start 2P', monospace; font-size: 26px; letter-spacing: 6px;
+      color: var(--sun); text-shadow: 0 0 14px var(--sun); margin: 12px 0;
+    }
+    .crew-opts { border-top: 1px solid #3a2060; margin-top: 18px; padding-top: 14px; }
+    .btn.sm { font-size: 10px; padding: 10px 14px; }
+    .back-row { margin-top: 16px; }
+
+    #char-grid { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; max-width: 700px; margin: 18px 0; }
+    .ccard {
+      width: 140px; padding: 12px 6px; text-align: center; cursor: pointer;
+      border: 2px solid #3a2060; border-radius: 8px; background: rgba(20, 10, 40, 0.8);
+      position: relative; transition: border-color .15s, box-shadow .15s;
+    }
+    .ccard canvas { image-rendering: pixelated; display: block; margin: 0 auto; }
+    .ccard .nm { font-size: 22px; }
+    .ccard .pr { font-family: 'Press Start 2P', monospace; font-size: 9px; color: var(--sun); }
+    .ccard.sel { border-color: var(--aqua); box-shadow: 0 0 14px var(--aqua); }
+    .ccard.locked { opacity: 0.6; cursor: not-allowed; }
+    .ccard.locked canvas { filter: grayscale(0.7) brightness(0.7); }
+    .padlock {
+      position: absolute; top: 8px; right: 8px;
+      width: 16px; height: 13px; background: var(--sun); border-radius: 2px;
+    }
+    .padlock::before {
+      content: ''; position: absolute; top: -9px; left: 3px;
+      width: 10px; height: 9px; border: 2.5px solid var(--sun);
+      border-bottom: none; border-radius: 7px 7px 0 0;
+    }
+
+    #toast {
+      position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: rgba(10, 5, 24, 0.92); border: 2px solid var(--aqua); border-radius: 6px;
+      padding: 12px 26px; z-index: 60; opacity: 0; pointer-events: none;
+      transition: opacity .4s, transform .4s;
+      font-family: 'Press Start 2P', monospace; font-size: 12px; color: var(--aqua);
+    }
+    #toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
 
     #overlay {
       position: fixed; inset: 0;
       display: none;
-      z-index: 30;
+      z-index: 38;
       background: var(--night) url('assets/ai-center-room.png') center/cover no-repeat;
       image-rendering: pixelated;
       overflow: auto;
@@ -214,16 +269,69 @@
     </div>
   </div>
 
-  <div id="player-modal">
-    <div class="card" style="--accent:var(--pink)">
-      <h2 class="neon" style="margin-top:0">WELCOME TO OCEAN DRIVE</h2>
-      <p>What's your name, hotshot?</p>
-      <input id="pname" maxlength="24" placeholder="NICKNAME" autocomplete="off">
-      <input id="pcrew" maxlength="24" placeholder="CREW CODE (OPTIONAL)" autocomplete="off">
-      <p class="hint">Friends who enter the same code share a board.</p>
-      <button class="btn" id="pgo">HIT THE STRIP</button>
+  <div id="start">
+    <div id="scr-title" class="scr on">
+      <canvas id="sunset"></canvas>
+      <h1 class="logo neon">AI VICE</h1>
+      <div class="sub pixel">NSPIRE HACKATHON 6 · RETRO REMIX</div>
+      <ul id="menu">
+        <li data-act="single">SINGLE PLAYER</li>
+        <li data-act="crew">CREW MODE (MULTIPLAYER)</li>
+        <li data-act="board">LEADERBOARD</li>
+        <li data-act="settings">SETTINGS</li>
+      </ul>
+    </div>
+
+    <div id="scr-signup" class="scr">
+      <div class="card" style="--accent:var(--aqua)">
+        <h2 class="neon" style="margin-top:0">WHO ARE YOU?</h2>
+        <input id="su-name" maxlength="16" placeholder="NICKNAME (1-16)" autocomplete="off">
+        <div class="crew-opts" id="crew-opts" hidden>
+          <button class="btn sm" id="crew-create">CREATE CREW</button>
+          <div id="crew-code-row" hidden>
+            <div class="crew-code" id="crew-code"></div>
+            <button class="btn sm" id="copy-code">COPY</button>
+            <p class="hint">Friends who enter the same code share a board.</p>
+          </div>
+          <p class="hint" style="margin-top:14px">— or join one —</p>
+          <input id="crew-join" maxlength="5" placeholder="CREW CODE" autocomplete="off">
+        </div>
+        <button class="btn" id="su-go">CONTINUE</button>
+        <div class="back-row"><button class="btn sm ghost back">BACK</button></div>
+      </div>
+    </div>
+
+    <div id="scr-select" class="scr">
+      <h2 class="neon" style="margin:0">CHOOSE YOUR PLAYER</h2>
+      <div id="char-grid"></div>
+      <button class="btn" id="letsgo">LET'S GO</button>
+    </div>
+
+    <div id="scr-settings" class="scr">
+      <div class="card" style="--accent:var(--sun)">
+        <h2 class="neon" style="margin-top:0">SETTINGS</h2>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0">
+          <span>MUSIC</span><button class="btn sm" id="set-music">ON</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:10px 0">
+          <span>CREW</span>
+          <span style="flex:1"><input id="set-crew" maxlength="24" placeholder="CODE" autocomplete="off" style="margin:0"></span>
+          <button class="btn sm" id="set-crew-save">SAVE</button>
+        </div>
+        <div style="margin:16px 0 4px">
+          <button class="btn sm" id="set-reset">RESET PROGRESS</button>
+          <div id="reset-confirm" hidden style="margin-top:12px">
+            <p class="hint">Wipe tokens, levels and characters?</p>
+            <button class="btn sm" id="reset-yes">YES, WIPE</button>
+            <button class="btn sm ghost" id="reset-no">CANCEL</button>
+          </div>
+        </div>
+        <div class="back-row"><button class="btn sm ghost back">BACK</button></div>
+      </div>
     </div>
   </div>
+
+  <div id="toast"></div>
 
   <div id="fade"></div>
 
@@ -299,22 +407,13 @@
       updateMuteBtn();
     });
 
-    var playerModal = document.getElementById('player-modal');
-    if (!AIVice.getPlayer().name) {
-      playerModal.classList.add('open');
-      setTimeout(function () { document.getElementById('pname').focus(); }, 50);
+    function toast(msg) {
+      var t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('on');
+      clearTimeout(t._h);
+      t._h = setTimeout(function () { t.classList.remove('on'); }, 2600);
     }
-    function submitPlayer() {
-      var name = document.getElementById('pname').value.trim();
-      if (!name) { document.getElementById('pname').focus(); return; }
-      AIVice.setPlayer(name, document.getElementById('pcrew').value.trim());
-      playerModal.classList.remove('open');
-      refreshHud();
-    }
-    document.getElementById('pgo').addEventListener('click', submitPlayer);
-    playerModal.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') submitPlayer();
-    });
 
     Object.keys(HOTSPOTS).forEach(function (id) {
       var h = HOTSPOTS[id];
@@ -519,6 +618,262 @@
       return String(s).replace(/[&<>"']/g, function (c) {
         return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
       });
+    }
+
+    // ---------- start flow: title -> signup -> select -> map ----------
+    var startEl = document.getElementById('start');
+    var flowMode = 'single';
+    var pendingCrew = '';
+    var selChar = 'rookie';
+
+    function showScreen(id) {
+      document.querySelectorAll('.scr').forEach(function (s) {
+        s.classList.toggle('on', s.id === id);
+      });
+    }
+
+    function enterMap() {
+      document.body.classList.add('playing');
+      startEl.classList.add('done');
+      setTimeout(function () { startEl.style.display = 'none'; }, 550);
+      refreshHud();
+      if (AIVice.music) AIVice.music.play('hub');
+    }
+
+    function drawSunset() {
+      var cv = document.getElementById('sunset'), ctx = cv.getContext('2d');
+      cv.width = innerWidth; cv.height = innerHeight;
+      var w = cv.width, h = cv.height, horizon = h * 0.68, cx = w / 2;
+      var g = ctx.createLinearGradient(0, 0, 0, horizon);
+      g.addColorStop(0, '#0a0518'); g.addColorStop(0.5, '#2b1140');
+      g.addColorStop(0.8, '#7a1e5c'); g.addColorStop(1, '#ff2fb3');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
+      var sr = Math.min(w, h) * 0.2, sy = horizon * 0.82;
+      var sg = ctx.createLinearGradient(0, sy - sr, 0, sy + sr);
+      sg.addColorStop(0, '#ffd23f'); sg.addColorStop(1, '#ff7a3d');
+      ctx.fillStyle = sg;
+      ctx.beginPath(); ctx.arc(cx, sy, sr, 0, Math.PI * 2); ctx.fill();
+      for (var i = 0; i < 6; i++) {
+        var yy = sy + sr * 0.1 + i * sr * 0.17, sh = 2 + i * 3;
+        ctx.fillStyle = 'rgba(43,17,64,' + (0.4 + i * 0.1) + ')';
+        ctx.fillRect(cx - sr, yy, sr * 2, sh);
+      }
+      ctx.fillStyle = '#0a0518'; ctx.fillRect(0, horizon, w, h - horizon);
+      ctx.strokeStyle = 'rgba(46,230,255,0.9)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, horizon); ctx.lineTo(w, horizon); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,47,179,0.45)'; ctx.lineWidth = 1;
+      for (i = 1; i <= 10; i++) {
+        var gy = horizon + Math.pow(i / 10, 1.7) * (h - horizon);
+        ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke();
+      }
+      for (i = -10; i <= 10; i++) {
+        ctx.beginPath(); ctx.moveTo(cx, horizon);
+        ctx.lineTo(cx + i * w * 0.16, h); ctx.stroke();
+      }
+      palm(ctx, w * 0.1, horizon + 12, 1.2);
+      palm(ctx, w * 0.9, horizon + 8, 1.4);
+      palm(ctx, w * 0.8, horizon + 4, 0.8);
+    }
+
+    function palm(ctx, x, y, s) {
+      ctx.strokeStyle = '#0a0518'; ctx.fillStyle = '#0a0518';
+      ctx.lineWidth = 8 * s; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.quadraticCurveTo(x + 10 * s, y - 90 * s, x + 26 * s, y - 140 * s);
+      ctx.stroke();
+      var tx = x + 26 * s, ty = y - 140 * s;
+      ctx.lineWidth = 4 * s;
+      for (var a = 0; a < 6; a++) {
+        var ang = -Math.PI * 0.95 + a * 0.38;
+        ctx.beginPath();
+        ctx.moveTo(tx, ty);
+        ctx.quadraticCurveTo(tx + Math.cos(ang) * 40 * s, ty + Math.sin(ang) * 20 * s - 12 * s,
+          tx + Math.cos(ang) * 64 * s, ty + Math.sin(ang) * 42 * s + 20 * s);
+        ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(tx, ty + 6 * s, 5 * s, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(tx + 8 * s, ty + 8 * s, 4 * s, 0, 7); ctx.fill();
+    }
+
+    var menuItems = Array.prototype.slice.call(document.querySelectorAll('#menu li'));
+    var menuIdx = 0;
+    function selectMenu(i) {
+      menuIdx = (i + menuItems.length) % menuItems.length;
+      menuItems.forEach(function (li, j) { li.classList.toggle('sel', j === menuIdx); });
+    }
+    selectMenu(0);
+
+    function menuAction(act) {
+      if (act === 'single' || act === 'crew') {
+        flowMode = act;
+        document.getElementById('crew-opts').hidden = act !== 'crew';
+        pendingCrew = '';
+        document.getElementById('crew-code-row').hidden = true;
+        document.getElementById('crew-join').value = '';
+        showScreen('scr-signup');
+        setTimeout(function () { document.getElementById('su-name').focus(); }, 50);
+      } else if (act === 'board') {
+        openAiCenter();
+      } else if (act === 'settings') {
+        syncSettings();
+        showScreen('scr-settings');
+      }
+    }
+
+    menuItems.forEach(function (li, i) {
+      li.addEventListener('click', function () { selectMenu(i); menuAction(li.dataset.act); });
+      li.addEventListener('mouseenter', function () { selectMenu(i); });
+    });
+    document.addEventListener('keydown', function (e) {
+      if (!document.getElementById('scr-title').classList.contains('on')) return;
+      if (e.key === 'ArrowUp') { selectMenu(menuIdx - 1); e.preventDefault(); }
+      else if (e.key === 'ArrowDown') { selectMenu(menuIdx + 1); e.preventDefault(); }
+      else if (e.key === 'Enter') menuAction(menuItems[menuIdx].dataset.act);
+    });
+
+    var CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+    document.getElementById('crew-create').addEventListener('click', function () {
+      var code = '';
+      for (var i = 0; i < 5; i++) code += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
+      pendingCrew = code;
+      document.getElementById('crew-code').textContent = code;
+      document.getElementById('crew-code-row').hidden = false;
+      document.getElementById('crew-join').value = '';
+    });
+    document.getElementById('copy-code').addEventListener('click', function () {
+      var code = document.getElementById('crew-code').textContent;
+      if (navigator.clipboard) navigator.clipboard.writeText(code);
+      toast('CREW CODE COPIED');
+    });
+    document.getElementById('crew-join').addEventListener('input', function (e) {
+      e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      pendingCrew = e.target.value;
+    });
+
+    document.getElementById('su-go').addEventListener('click', function () {
+      var name = document.getElementById('su-name').value.trim();
+      if (!name) { document.getElementById('su-name').focus(); return; }
+      var crew = '';
+      if (flowMode === 'crew') {
+        var join = document.getElementById('crew-join').value.trim();
+        crew = join || pendingCrew;
+      }
+      AIVice.setPlayer(name, crew);
+      renderSelect();
+      showScreen('scr-select');
+    });
+    document.getElementById('su-name').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') document.getElementById('su-go').click();
+    });
+
+    function crewDraw(cv, id, which, i) {
+      if (window.AIViceCrew) { AIViceCrew.drawInto(cv, id, which, i); return; }
+      if (window.AIViceSprite) {
+        AIViceSprite.draw(cv.getContext('2d'), colorsOf(id), i === 1 ? 1 : 0, 24, 16, 4);
+      }
+    }
+    function colorsOf(id) {
+      var list = AIVice.characters || [];
+      for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i].colors;
+      return { body: '#eaf6ff', accent: '#2ee6ff' };
+    }
+
+    function animCard(card, id, on) {
+      if (card._anim) { clearInterval(card._anim); card._anim = null; }
+      card._cv.style.transform = '';
+      if (!on) { crewDraw(card._cv, id, 'portrait'); return; }
+      var f = 0;
+      card._anim = setInterval(function () {
+        crewDraw(card._cv, id, 'walk', f % 2);
+        card._cv.style.transform = 'translateY(' + (f % 2 ? -3 : 0) + 'px)';
+        f++;
+      }, 220);
+    }
+
+    function renderSelect() {
+      var grid = document.getElementById('char-grid');
+      grid.innerHTML = '';
+      selChar = AIVice.getActiveCharacter().id;
+      AIVice.getCharacters().forEach(function (c) {
+        var locked = !c.owned && c.price > 0;
+        var card = document.createElement('div');
+        card.className = 'ccard' + (c.id === selChar ? ' sel' : '') + (locked ? ' locked' : '');
+        card.dataset.id = c.id;
+        var cv = document.createElement('canvas');
+        cv.width = 96; cv.height = 96;
+        card._cv = cv;
+        crewDraw(cv, c.id, 'portrait');
+        card.appendChild(cv);
+        card.insertAdjacentHTML('beforeend',
+          '<div class="nm">' + esc(c.name) + '</div>' +
+          '<div class="pr">' + (c.owned ? (c.price === 0 ? 'FREE' : 'OWNED') : c.price + ' TOKENS') + '</div>');
+        if (locked) card.insertAdjacentHTML('beforeend', '<div class="padlock"></div>');
+        card.addEventListener('click', function () {
+          if (locked) return;
+          selChar = c.id;
+          document.querySelectorAll('.ccard').forEach(function (x) {
+            var sel = x === card;
+            x.classList.toggle('sel', sel);
+            animCard(x, x.dataset.id, sel);
+          });
+        });
+        card.addEventListener('mouseenter', function () {
+          if (!locked) animCard(card, c.id, true);
+        });
+        card.addEventListener('mouseleave', function () {
+          if (selChar !== c.id) animCard(card, c.id, false);
+        });
+        grid.appendChild(card);
+      });
+      var first = grid.querySelector('.ccard.sel');
+      if (first) animCard(first, first.dataset.id, true);
+    }
+
+    document.getElementById('letsgo').addEventListener('click', function () {
+      AIVice.setActiveCharacter(selChar);
+      Object.keys(cardTimers).forEach(function (k) { clearInterval(cardTimers[k]); });
+      enterMap();
+    });
+
+    function syncSettings() {
+      document.getElementById('set-music').textContent = AIVice.isMuted() ? 'OFF' : 'ON';
+      document.getElementById('set-crew').value = AIVice.getPlayer().crew || '';
+      document.getElementById('reset-confirm').hidden = true;
+    }
+    document.getElementById('set-music').addEventListener('click', function () {
+      if (AIVice.music && AIVice.music.toggle) AIVice.music.toggle();
+      else AIVice.setMuted(!AIVice.isMuted());
+      this.textContent = AIVice.isMuted() ? 'OFF' : 'ON';
+    });
+    document.getElementById('set-crew-save').addEventListener('click', function () {
+      var p = AIVice.getPlayer();
+      AIVice.setPlayer(p.name || 'ANON', document.getElementById('set-crew').value.trim());
+      toast('CREW UPDATED');
+    });
+    document.getElementById('set-reset').addEventListener('click', function () {
+      document.getElementById('reset-confirm').hidden = false;
+    });
+    document.getElementById('reset-no').addEventListener('click', function () {
+      document.getElementById('reset-confirm').hidden = true;
+    });
+    document.getElementById('reset-yes').addEventListener('click', function () {
+      AIVice.reset();
+      try { localStorage.removeItem('ai-vice-score-queue'); } catch (e) {}
+      location.reload();
+    });
+    document.querySelectorAll('.back').forEach(function (b) {
+      b.addEventListener('click', function () { showScreen('scr-title'); });
+    });
+
+    drawSunset();
+    addEventListener('resize', drawSunset);
+
+    if (AIVice.getPlayer().name) {
+      enterMap();
+      toast('WELCOME BACK, ' + AIVice.getPlayer().name.toUpperCase());
+    } else {
+      showScreen('scr-title');
     }
 
     refreshHud();
