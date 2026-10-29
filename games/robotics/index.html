@@ -3,17 +3,57 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Robotics — AI Vice</title>
-  <link rel="stylesheet" href="../../shared/theme.css">
-  <style>body { --accent: var(--robotics); }</style>
+  <meta name="theme-color" content="#152331">
+  <meta name="description" content="Small robots. Big ideas. Play four arcade challenges, discover robot parts, and build your first bot in the mdeanh Robotics pixel workshop.">
+  <title>mdeanh Robotics · The Pixel Workshop</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="game.css">
+  <link rel="stylesheet" href="arcade.css">
+  <script type="module" src="app.js"></script>
 </head>
 <body>
-  <div class="screen">
-    <h1 class="neon">Robotics</h1>
-    <p class="pixel">ROBOTICS</p>
-    <p>Game under construction — check back soon.</p>
-    <button class="btn" onclick="AIVice.backToHub()">Back to AI Center</button>
+  <a class="skip-link" href="#mission-title">Skip to your mission</a>
+  <div class="app-shell">
+    <header class="topbar">
+      <a href="./" class="brand" aria-label="mdeanh Robotics workshop"><span class="brand-bot" aria-hidden="true"></span><span><b>mdeanh<span class="brand-dot">.</span></b><span class="brand-sub">ROBOTICS</span></span></a>
+      <div class="workshop-title"><span aria-hidden="true">⚒</span> THE ROBOT WORKSHOP <span aria-hidden="true">⚒</span></div>
+      <div class="top-actions"><button class="icon-button" id="sound-button" aria-pressed="false" aria-label="Turn sound on" title="Turn sound on"><span id="sound-icon" aria-hidden="true">♪</span><span class="sound-text">OFF</span></button><button class="icon-button help-button" id="help-button" aria-label="How to play" title="How to play">?</button></div>
+    </header>
+    <nav class="toolbar" aria-label="Workshop navigation">
+      <div class="tabs"><button class="tab active" id="workshop-tab" aria-current="page"><span aria-hidden="true">▦</span> Workshop</button><button class="tab" id="notebook-button"><span aria-hidden="true">▤</span> Parts notebook <span class="tab-count" id="notebook-count">0/4</span></button></div>
+      <div class="player-rank"><span class="rank-star" aria-hidden="true">✦</span><span id="rank-name">ROOKIE BUILDER</span><span class="xp-bar" aria-hidden="true"><i id="xp-fill"></i></span><span id="xp-label">0 XP</span></div>
+    </nav>
+    <main class="workshop-layout">
+      <section class="scene" aria-label="Interactive robot workbench">
+        <img class="workshop-image" src="assets/workshop.png" alt="A sunny pixel-art maker workshop, with tools, component bins, and a little rover on the workbench." fetchpriority="high" width="1586" height="992">
+        <div class="scene-shade" aria-hidden="true"></div>
+        <div class="scene-top"><span class="scene-label"><span class="live-dot" aria-hidden="true"></span> WORKBENCH 01</span><span class="scene-label scene-save" id="save-status">PROGRESS SAVED LOCALLY</span></div>
+        <div class="robot-name"><span class="tiny-bot" aria-hidden="true">▣</span> BOT–01 <span class="robot-status" id="robot-status">IN THE MAKING</span></div>
+        <div class="hotspots" id="hotspots"></div>
+        <button class="scene-play" id="scene-play"><span aria-hidden="true">▶</span><span>READY, BUILDER?<small>START AN ARCADE MISSION</small></span><span aria-hidden="true">→</span></button>
+        <div class="scene-spark" aria-hidden="true"></div>
+        <div class="mentor-box"><span class="mentor-avatar" aria-hidden="true"><span></span></span><div><span class="mentor-name">BYTE <span>YOUR WORKSHOP BUDDY</span></span><p id="mentor-message">Every great robot starts with a little curiosity.</p><span id="mentor-detail">Pick a part. Play a challenge. Bring BOT–01 to life.</span></div><button class="mentor-help" id="mentor-help" aria-label="Read how to play">?</button></div>
+        <div class="scene-caption"><span aria-hidden="true">⌘</span> Click a glowing part to explore it <span class="scene-caption-right">A LITTLE LEARNING. A LOT OF BUILDING.</span></div>
+      </section>
+      <aside class="mission-panel" aria-labelledby="mission-title">
+        <div class="mission-heading"><span class="clipboard" aria-hidden="true">▤</span><span>YOUR NEXT MISSION</span><span class="mission-counter" id="mission-counter">01 / 04</span></div>
+        <div class="mission-intro"><span class="eyebrow" id="mission-eyebrow">START WITH THE SENSES</span><h1 id="mission-title" tabindex="-1">Give your robot senses.</h1><p id="mission-description">Help your robot discover the world around it.</p></div>
+        <div class="module-list" id="module-list" role="group" aria-label="Choose a robot part"></div>
+        <div class="part-detail" id="part-detail"><div class="part-icon" id="part-icon" aria-hidden="true"></div><div><span class="eyebrow">MEET YOUR NEW PART</span><h2 id="part-name">Distance sensor</h2><p id="part-description"></p></div></div>
+        <div class="challenge-meta"><span><span class="difficulty-bars" aria-hidden="true">▮▮▯</span> BEGINNER FRIENDLY</span><span id="reward-label">+100 XP</span></div>
+        <button class="play-button" id="play-button"><span class="play-triangle" aria-hidden="true">▶</span><span id="play-label">PLAY SENSOR CHALLENGE</span><span aria-hidden="true">→</span></button>
+        <p class="mission-footnote" id="mission-footnote">Drive. Dodge. Collect. Bring your parts home.</p>
+        <div class="mission-mode-row"><span>WANT TO EXPERIMENT?</span><button id="tinker-button">TINKER LAB <span aria-hidden="true">↗</span></button></div>
+      </aside>
+    </main>
+    <footer class="statusbar"><div class="status-motto"><span class="trophy" aria-hidden="true">✦</span><span id="footer-message">Small robots. <b>Big ideas.</b></span></div><div class="build-progress"><span id="progress-label">YOUR FIRST ROBOT</span><div class="progress-parts" id="progress-parts" aria-label="0 of 4 parts earned"></div><span id="parts-count">0 / 4 PARTS</span></div><button class="footer-how" id="footer-help">HOW TO PLAY <span aria-hidden="true">↗</span></button></footer>
   </div>
-  <script src="../../shared/wallet.js"></script>
+  <dialog id="challenge-dialog" class="challenge-dialog" aria-labelledby="challenge-title"><div class="dialog-top"><span class="eyebrow" id="challenge-kicker">THE CHALLENGE ROOM</span><button class="close-button" id="challenge-close" aria-label="Close challenge">✕</button></div><h2 id="challenge-title"></h2><div id="challenge-content"></div></dialog>
+  <dialog id="info-dialog" class="info-dialog" aria-labelledby="info-title"><div class="dialog-top"><span class="eyebrow">MDEANH ROBOTICS</span><button class="close-button" id="info-close" aria-label="Close panel">✕</button></div><h2 id="info-title"></h2><div id="info-content"></div></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <noscript><div class="noscript">Please enable JavaScript to play the robotics challenges.</div></noscript>
+  <script src="../../shared/include.js"></script>
+  <script src="aivice-bridge.js"></script>
 </body>
 </html>
