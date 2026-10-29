@@ -3,12 +3,13 @@ window.AIVice = (function () {
   var QUEUE_KEY = 'ai-vice-score-queue';
 
   var CHARACTERS = [
-    { id: 'rookie',     name: 'Rookie',      price: 0,   colors: { body: '#eaf6ff', accent: '#2ee6ff' } },
-    { id: 'crocket',    name: 'Crocket',     price: 40,  colors: { body: '#ff9ad5', accent: '#ff2fb3' } },
-    { id: 'tubbs',      name: 'Tubbs',       price: 40,  colors: { body: '#8beaff', accent: '#2ee6ff' } },
-    { id: 'neon-nina',  name: 'Neon Nina',   price: 80,  colors: { body: '#ffb27a', accent: '#ff7a3d' } },
-    { id: 'pixel-palm', name: 'Pixel Palm',  price: 80,  colors: { body: '#ffe58b', accent: '#ffd23f' } },
-    { id: 'ghost',      name: 'Ghost',       price: 120, colors: { body: '#b08cd9', accent: '#7a3cff' } }
+    { id: 'rookie',  name: 'Rookie',  price: 0,   colors: { body: '#eaf6ff', accent: '#2ee6ff' } },
+    { id: 'jay',     name: 'Jay',     price: 50,  colors: { body: '#be8c64', accent: '#ff7a3d' } },
+    { id: 'michael', name: 'Michael', price: 50,  colors: { body: '#dcaf82', accent: '#2ee6ff' } },
+    { id: 'nelson',  name: 'Nelson',  price: 75,  colors: { body: '#aa7850', accent: '#ffd23f' } },
+    { id: 'milosz',  name: 'Milosz',  price: 75,  colors: { body: '#e6bea0', accent: '#7a3cff' } },
+    { id: 'ophelie', name: 'Ophelie', price: 100, colors: { body: '#f0cdb4', accent: '#ff2fb3' } },
+    { id: 'tarik',   name: 'Tarik',   price: 150, colors: { body: '#96643f', accent: '#ff3355' } }
   ];
 
   function fresh() {

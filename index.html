@@ -230,6 +230,7 @@
   <script src="shared/config.js"></script>
   <script src="shared/wallet.js"></script>
   <script src="shared/sprite.js"></script>
+  <script src="shared/crew.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
   <script src="shared/leaderboard.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
@@ -271,9 +272,14 @@
       document.getElementById('hud-tokens').textContent = AIVice.getTokens();
       document.getElementById('hud-done').textContent = AIVice.getCompleted().length + '/4';
       document.getElementById('hud-name').textContent = AIVice.getPlayer().name || 'ANON';
-      var hc = document.getElementById('hud-sprite').getContext('2d');
-      hc.clearRect(0, 0, 24, 20);
-      AIViceSprite.draw(hc, AIVice.getActiveCharacter().colors, 0, 0, 0, 2);
+      var hcvs = document.getElementById('hud-sprite');
+      if (window.AIViceCrew) {
+        AIViceCrew.drawInto(hcvs, AIVice.getActiveCharacter().id, 'portrait');
+      } else {
+        var hc = hcvs.getContext('2d');
+        hc.clearRect(0, 0, 24, 20);
+        AIViceSprite.draw(hc, AIVice.getActiveCharacter().colors, 0, 0, 0, 2);
+      }
       document.querySelectorAll('.hotspot').forEach(function (el) {
         el.classList.toggle('done', AIVice.isComplete(el.dataset.id));
       });
@@ -327,7 +333,11 @@
       map.style.transform = 'scale(2.5)';
     }
 
-    function drawFrame(colors, frame) {
+    function drawFrame(colors, frame, view) {
+      if (window.AIViceCrew) {
+        AIViceCrew.drawInto(sprite, AIVice.getActiveCharacter().id, view || 'walk', frame);
+        return;
+      }
       sctx.clearRect(0, 0, sprite.width, sprite.height);
       AIViceSprite.draw(sctx, colors, frame, 0, 0, 4);
     }
@@ -347,7 +357,7 @@
           var y = startY + (doorY - startY) * p - sh;
           sprite.style.left = x * 100 + '%';
           sprite.style.top = y * 100 + '%';
-          drawFrame(colors, Math.floor(now / 180) % 2);
+          drawFrame(colors, Math.floor(now / 180) % 2, p < 0.12 ? 'front' : 'walk');
           if (p < 1) requestAnimationFrame(step); else resolve();
         })(t0);
       });
@@ -356,6 +366,7 @@
     function enterDoor(h) {
       glow.style.cssText = 'display:block;left:' + (h.x + h.w * 0.25) + '%;top:' + (h.y + h.h * 0.6) +
         '%;width:' + h.w * 0.5 + '%;height:' + h.h * 0.4 + '%;';
+      drawFrame(AIVice.getActiveCharacter().colors, 0, 'back');
       sprite.style.opacity = '0';
       return wait(400);
     }
@@ -445,8 +456,9 @@
         var ped = document.createElement('div');
         ped.className = 'pedestal' + (c.active ? ' active' : '');
         var cv = document.createElement('canvas');
-        cv.width = 48; cv.height = 40;
-        AIViceSprite.draw(cv.getContext('2d'), c.colors, 0, 0, 0, 4);
+        cv.width = 64; cv.height = 64;
+        if (window.AIViceCrew) AIViceCrew.drawInto(cv, c.id, 'portrait');
+        else AIViceSprite.draw(cv.getContext('2d'), c.colors, 0, 0, 8, 4);
         ped.appendChild(cv);
         var nm = document.createElement('div');
         nm.innerHTML = '<b>' + c.name + '</b>';
@@ -492,11 +504,14 @@
           var rank = i < 3 ? '<span style="color:' + crowns[i] + '">&#9830;</span>' : String(i + 1);
           var mine = r.player_name === me.name && me.name;
           return '<tr' + (mine ? ' class="me"' : '') + '>' +
+            '<td><canvas width="20" height="20" class="lb-av"' + (mine ? ' data-me="1"' : '') + '></canvas></td>' +
             '<td>' + rank + '</td><td>' + esc(r.player_name) + '</td>' +
             '<td class="pixel" style="color:var(--sun)">' + r.total_points + '</td>' +
             '<td style="color:#8a7fb0">' + (r.crew_code || '') + '</td>' +
             '<td style="color:#8a7fb0">' + r.games_played + ' games</td></tr>';
         }).join('');
+        var av = tbl.querySelector('[data-me]');
+        if (av && window.AIViceCrew) AIViceCrew.drawInto(av, AIVice.getActiveCharacter().id, 'portrait');
       });
     }
 

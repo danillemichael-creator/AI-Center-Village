@@ -4,6 +4,7 @@
     'config.js',
     'wallet.js',
     'sprite.js',
+    'crew.js',
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js',
     'leaderboard.js',
     'https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js',
