@@ -32,6 +32,72 @@ python3 -m http.server 8000
 5. **Must run from static files** — no server code, no API keys in the repo. Libraries only from a CDN (cdnjs, jsdelivr, unpkg).
 6. Commit small and often. Push to your branch only.
 
+## Shared API — add one line, get everything
+
+Put this in your game's `<head>` and you get the wallet, leaderboard, sprites and music:
+
+```html
+<script src="../../shared/include.js"></script>
+```
+
+When it's all loaded, an `aivice:ready` event fires on `document` (and `AIVice.ready === true`).
+
+Everything degrades gracefully: if the Supabase or Tone.js CDN is unreachable, scores queue locally, the leaderboard returns `[]`, and music becomes a no-op — your game still runs.
+
+### Player
+
+```js
+AIVice.setPlayer(name, crewCode)   // hub asks on first visit; crew code is optional
+AIVice.getPlayer()                 // { name: 'Vic', crew: 'NEONS' }
+```
+
+### Tokens and levels
+
+```js
+AIVice.awardLevel(gameId, level, tokens)  // first-time-only award; neon "+N" popup,
+                                        // submits score, plays the jingle. true if new.
+AIVice.addTokens(gameId, n)               // raw token grant
+AIVice.markComplete(gameId)               // true the first time; use for the 50-token finish
+AIVice.isComplete(gameId)
+AIVice.getTokens() / AIVice.getCompleted()
+```
+
+Prefer `awardLevel` per room/level so scores hit the leaderboard. Finish with:
+
+```js
+if (AIVice.markComplete('<your-game>')) AIVice.addTokens('<your-game>', 50);
+```
+
+### Leaderboard (Supabase)
+
+```js
+AIVice.submitScore(gameId, level, points) // gameId: python-lab|robotics|dx-lab|matrix-motel
+AIVice.getLeaderboard({ crewCode, limit }) // Promise<[{player_name, crew_code,
+                                         //   total_points, games_played}]>
+```
+
+- `submitScore` is fire-and-forget; failed inserts queue in `localStorage` and retry every 30 s / on reconnect. Never blocks gameplay.
+- `getLeaderboard({crewCode})` returns your crew's board; omit it for everyone.
+
+### Music
+
+```js
+AIVice.music.play('hub')        // call on load — starts muted-safe on first click
+AIVice.music.play('challenge')  // the hub already switches to this when entering your game
+AIVice.music.jingle()           // 3 s victory arp (awardLevel calls it for you)
+AIVice.music.toggle()           // persisted mute
+```
+
+### Characters and misc
+
+```js
+AIVice.characters                          // the 6 shop characters
+AIVice.getActiveCharacter()                // { id, name, colors:{body,accent} } — use for your sprite
+AIVice.redeemCharacter(id) / AIVice.setActiveCharacter(id)
+AIVice.backToHub()                          // every game needs a "Back to AI Center" button
+AIViceSprite.draw(ctx, colors, frame, x, y, px)  // pixel sprite, frame 0/1 = walk cycle
+```
+
 ## Timeline (event ends 9:00 p.m.)
 
 - **8:15** — your game is playable start to finish (even if rough). Push.
