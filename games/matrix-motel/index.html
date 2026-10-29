@@ -4,16 +4,36 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Matrix Motel — AI Vice</title>
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="../../shared/theme.css">
+  <link rel="stylesheet" href="style.css">
   <style>body { --accent: var(--matrix-motel); }</style>
 </head>
 <body>
-  <div class="screen">
-    <h1 class="neon">Matrix Motel</h1>
-    <p class="pixel">RED TEAMING</p>
-    <p>Game under construction — check back soon.</p>
-    <button class="btn" onclick="AIVice.backToHub()">Back to AI Center</button>
-  </div>
+  <header class="topbar">
+    <div>
+      <p class="pixel kicker">RED TEAMING</p>
+      <h1 class="neon">Matrix Motel</h1>
+    </div>
+    <div class="top-actions">
+      <p class="pixel" id="token-readout">TOKENS 0</p>
+      <button class="btn ghost" type="button" onclick="AIVice.backToHub()">Back to AI Center</button>
+    </div>
+  </header>
+  <div id="floor-slot" class="floor-slot"></div>
+  <main id="app">
+    <section class="card fallback">
+      <p>Night shift. GHOST is moving through the motel network. Cut vulnerable links and keep essential services online.</p>
+      <ol>
+        <li><strong>PATIENT ZERO</strong> — Cut the exposed link before GHOST reaches the security server.</li>
+        <li><strong>CHAIN REACTION</strong> — Close every route that can still reach the office server.</li>
+        <li><strong>KEEP THE LIGHTS ON</strong> — Contain GHOST. Keep payment and cameras connected to the central server.</li>
+        <li><strong>LIMITED LOCKDOWN</strong> — You have 2 cuts. Hold the secure LAN and keep its services online.</li>
+        <li><strong>THE FINAL BREACH</strong> — Two breaches. Three cuts. Protect the vault side and keep services online.</li>
+      </ol>
+    </section>
+  </main>
   <script src="../../shared/wallet.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
